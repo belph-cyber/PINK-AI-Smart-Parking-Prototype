@@ -1,0 +1,7 @@
+# Dependencies for Smart AI Parking Service
+paho-mqtt>=2.1.0
+mysql-connector-python>=8.0.0
+python-dotenv>=1.0.0
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.0.0

@@ -1,0 +1,25 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment configuration (Use .env.example as template)
+.env
+
+# Virtual environments & dependencies
+venv/
+env/
+.venv/
+node_modules/
+.expo/
+.claude/
+
+# Logs and temporary files
+*.log
+scratch/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini

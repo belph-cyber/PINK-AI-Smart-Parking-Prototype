@@ -1,0 +1,58 @@
+<mxfile host="app.diagrams.net" modified="2026-11-26T01:15:00.000Z" agent="5.0" version="21.0.0" type="device">
+  <diagram id="PinkAI-Overview" name="ภาพรวมระบบ PINK AI Smart Parking (Overview Workflow)">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" background="#0E1017" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- STAGE 1: ENTRANCE -->
+        <mxCell id="box1" value="1. อุปกรณ์หน้างาน &amp; เซนเซอร์&#xa;(Entrance &amp; Sensors)&#xa;&#xa;• รถเข้าสู่จุดตรวจทางเข้า&#xa;• กล้องจับภาพป้ายทะเบียน&#xa;• เซนเซอร์ Ultrasonic (HC-SR04)&#xa;  ตรวจจับรถในช่องจอดจริง&#xa;• บอร์ด ESP32 คุมไม้กั้น &amp; ไฟ LED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F1D2B;strokeColor=#FF4D9B;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="270" width="230" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- STAGE 2: AI VISION -->
+        <mxCell id="box2" value="2. AI อ่านป้ายทะเบียน&#xa;(CiRA CORE DeepDetect)&#xa;&#xa;• ตรวจจับกรอบป้ายทะเบียน&#xa;• ถอดรหัสตัวเลข อักษร และจังหวัด&#xa;• ส่งข้อความผ่าน MQTT&#xa;*(ช่องจอดตรวจด้วยเซนเซอร์)*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F1D2B;strokeColor=#A855F7;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="330" y="270" width="230" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- STAGE 3: BACKEND SERVER -->
+        <mxCell id="box3" value="3. เซิร์ฟเวอร์กลาง &amp; ตรวจสิทธิ์&#xa;(FastAPI Backend Engine)&#xa;&#xa;• ตรวจสอบสิทธิ์ทะเบียนรถ (RBAC)&#xa;• กรองป้ายซ้ำและป้องกันอ่านรัว&#xa;• รับค่าเซนเซอร์ Ultrasonic&#xa;  เพื่ออัปเดตสถานะช่องจอดว่าง" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F1D2B;strokeColor=#38BDF8;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="610" y="270" width="240" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- STAGE 4A: GATE OPEN -->
+        <mxCell id="box4a" value="● สิทธิ์ถูกต้อง (Access Granted)&#xa;• สั่งเปิดไม้กั้นอัตโนมัติ&#xa;• หลอดไฟเปลี่ยนเป็น สีเขียว&#xa;• จอ LCD แสดงข้อความต้อนรับ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#142A1E;strokeColor=#4ADE80;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="80" width="240" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- STAGE 4B: GATE DENY -->
+        <mxCell id="box4b" value="✕ สิทธิ์ไม่ผ่าน / ผิดปกติ&#xa;• ไม้กั้นปิดสนิท (ไม่เปิด)&#xa;• หลอดไฟแสดง สีแดง&#xa;• ส่งแจ้งเตือนไปยังหน้าจอ รปภ." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A141A;strokeColor=#F87171;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="520" width="240" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- STAGE 5: DISPLAY & DATABASE -->
+        <mxCell id="box5" value="4. การบันทึก &amp; แสดงผลลัพธ์&#xa;(Storage &amp; Dashboard)&#xa;&#xa;• ฐานข้อมูลระบบ (SQLite DB)&#xa;• จอ Kiosk หน้าอาคาร แสดงช่องว่าง&#xa;• หน้าเว็บสำหรับ 3 บทบาท&#xa;  (ผู้ใช้งาน / รปภ. / แอดมิน)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F1D2B;strokeColor=#10B981;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="900" y="270" width="240" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#FF4D9B;strokeWidth=3;" edge="1" parent="1" source="box1" target="box2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#A855F7;strokeWidth=3;" edge="1" parent="1" source="box2" target="box3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4ADE80;strokeWidth=2.5;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="box3" target="box4a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F87171;strokeWidth=2.5;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="box3" target="box4b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38BDF8;strokeWidth=3;" edge="1" parent="1" source="box3" target="box5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

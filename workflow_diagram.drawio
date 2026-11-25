@@ -1,0 +1,180 @@
+<mxfile host="app.diagrams.net" modified="2026-11-26T01:15:00.000Z" agent="5.0" version="21.0.0" type="device">
+  <diagram id="PinkAI-Parking-Workflow" name="PINK AI Smart Parking Workflow">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200" background="#0E1017" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ================= LANE 1: HARDWARE & SENSORS ================= -->
+        <mxCell id="lane_hw" value="1. HARDWARE &amp; SENSORS (ESP32 / SENSORS / CAM)" style="swimlane;startSize=30;fillColor=#181B26;strokeColor=#2D3748;fontColor=#FF8ABC;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="340" height="960" as="geometry" />
+        </mxCell>
+        <mxCell id="hw_car" value="🚗 ยานพาหนะเข้าสู่ทางเข้าอาคาร&#xa;(Vehicle Arrival)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#251C2A;strokeColor=#FF4D9B;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="lane_hw">
+          <mxGeometry x="30" y="50" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hw_cam" value="📷 IP / RTSP / WebCam&#xa;ถ่ายภาพป้ายทะเบียนแบบ Real-time" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A2634;strokeColor=#38BDF8;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_hw">
+          <mxGeometry x="30" y="150" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hw_esp" value="⚡ ESP32 Microcontroller Core&#xa;WiFi &amp; MQTT Client Bridge&#xa;ควบคุม Servo &amp; รับค่าเซนเซอร์" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E293B;strokeColor=#64748B;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="lane_hw">
+          <mxGeometry x="30" y="270" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="hw_servo" value="🚧 Servo SG92R&#xa;ยกไม้กั้นอัตโนมัติ (0° ➔ 90°)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#143126;strokeColor=#4ADE80;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_hw">
+          <mxGeometry x="30" y="380" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hw_lcd" value="📟 จอ LCD Display 1602&#xa;แสดงต้อนรับ &amp; ทะเบียน &amp; ที่ว่าง" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E293B;strokeColor=#38BDF8;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_hw">
+          <mxGeometry x="30" y="480" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hw_hcsr04" value="📡 Ultrasonic Sensor (HC-SR04 x3)&#xa;ตรวจจับรถในช่องจอด #1, #2&#xa;และช่องห้ามจอด (NO_PARK)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#312E1A;strokeColor=#FACC15;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="lane_hw">
+          <mxGeometry x="30" y="580" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="hw_led" value="🚦 Traffic LED Indicator (ไฟจราจร)&#xa;ไฟเขียว (ผ่าน) / ไฟแดง (ห้ามเข้า)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#371B1D;strokeColor=#F87171;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_hw">
+          <mxGeometry x="30" y="690" width="280" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ================= LANE 2: AI & VISION ================= -->
+        <mxCell id="lane_ai" value="2. AI LICENSE PLATE RECOGNITION (CiRA CORE)" style="swimlane;startSize=30;fillColor=#181B26;strokeColor=#2D3748;fontColor=#38BDF8;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="40" width="340" height="960" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_crop" value="🔍 Image Zoom / Crop Node&#xa;ปรับสัดส่วนภาพ Digital Zoom 2x" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1C2433;strokeColor=#38BDF8;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_ai">
+          <mxGeometry x="30" y="80" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_deep" value="🧠 DeepDetect: license_plate&#xa;ตรวจจับกรอบป้ายทะเบียน &amp; ตัวอักษรไทย" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#231C30;strokeColor=#A855F7;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="lane_ai">
+          <mxGeometry x="30" y="200" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_py" value="🐍 cira_plate_node.py&#xa;แปลง Bounding Box เป็นข้อความทะเบียน&#xa;และชื่อจังหวัด (Thai OCR Parser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1C2B22;strokeColor=#10B981;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_ai">
+          <mxGeometry x="30" y="330" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_pub" value="📤 MqttPub Node&#xa;Publish ไปยัง Mosquitto Broker&#xa;(Topic: parking/gate/plate)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#251C2A;strokeColor=#FF4D9B;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="lane_ai">
+          <mxGeometry x="30" y="470" width="280" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ================= LANE 3: BACKEND ENGINE ================= -->
+        <mxCell id="lane_be" value="3. BACKEND &amp; GATEWAY (FastAPI / MQTT ENGINE)" style="swimlane;startSize=30;fillColor=#181B26;strokeColor=#2D3748;fontColor=#4ADE80;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="40" width="370" height="960" as="geometry" />
+        </mxCell>
+        <mxCell id="be_mqtt" value="📡 MQTT Client (Async Paho-MQTT)&#xa;Subscribe: parking/gate/plate&#xa;&amp; parking/sensors/slots" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F2937;strokeColor=#9CA3AF;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_be">
+          <mxGeometry x="30" y="60" width="310" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="be_filter" value="🛡️ Plate Normalizer &amp; Cooldown&#xa;ตัดช่องว่าง / ป้องกันอ่านป้ายซ้ำรัว 10s" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A2634;strokeColor=#38BDF8;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_be">
+          <mxGeometry x="30" y="160" width="310" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="be_decide" value="⚖️ RBAC Authorization &amp; Policy Check&#xa;เทียบทะเบียนกับฐานข้อมูลผู้ใช้งาน&#xa;(Admin / Teacher / Student / Security)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#2D2418;strokeColor=#F59E0B;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="lane_be">
+          <mxGeometry x="30" y="260" width="310" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="be_open" value="✅ ACCESS GRANTED (อนุมัติเข้า)&#xa;• สั่งเปิดไม้กั้น (Topic: parking/esp/gate)&#xa;• สั่งไฟเขียว (Topic: parking/esp/led)&#xa;• บันทึก Entry Session" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#142A1E;strokeColor=#22C55E;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="lane_be">
+          <mxGeometry x="30" y="390" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="be_deny" value="❌ ACCESS DENIED (ไม่อนุญาต)&#xa;• ไม้กั้นปิดสนิท (ไม่เปิด)&#xa;• สั่งไฟแดงเตือน&#xa;• ส่งแจ้งเตือนหน้าจอ รปภ." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A141A;strokeColor=#EF4444;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="lane_be">
+          <mxGeometry x="30" y="500" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="be_slots" value="📊 Slot Status Processor&#xa;รับค่าระยะทางจาก HC-SR04&#xa;คำนวณสถานะช่องจอดว่างแบบ Real-time" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E293B;strokeColor=#FACC15;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="lane_be">
+          <mxGeometry x="30" y="615" width="310" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="be_api" value="🌐 FastAPI REST &amp; WebSocket Endpoints&#xa;/api/logs, /api/users, /api/slots&#xa;Live Broadcast สดถึง Client ทุกเบราว์เซอร์" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1C2433;strokeColor=#38BDF8;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="lane_be">
+          <mxGeometry x="30" y="720" width="310" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- ================= LANE 4: DATA & INTERFACE ================= -->
+        <mxCell id="lane_db" value="4. DATA &amp; USER INTERFACE (WEB APPS)" style="swimlane;startSize=30;fillColor=#181B26;strokeColor=#2D3748;fontColor=#C084FC;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="40" width="350" height="960" as="geometry" />
+        </mxCell>
+        <mxCell id="db_sqlite" value="💾 SQLite Database (parking_real.db)&#xa;เก็บบัญชีผู้ใช้, สิทธิ์ RBAC,&#xa;ประวัติการเข้า-ออก (Gate Logs)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#1E2638;strokeColor=#60A5FA;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="40" y="70" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_kiosk" value="📺 Kiosk หน้าอาคาร&#xa;แสดงสถานะช่องจอดว่างรวม &amp; ป้ายทะเบียนล่าสุด" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1C2630;strokeColor=#38BDF8;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_db">
+          <mxGeometry x="40" y="210" width="270" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_user" value="👤 เว็บแอปพลิเคชันสำหรับผู้ใช้&#xa;(นักศึกษา &amp; อาจารย์)&#xa;ตรวจสอบที่ว่าง &amp; ดูประวัติรถของตนเอง" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#281E2E;strokeColor=#EC4899;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_db">
+          <mxGeometry x="40" y="310" width="270" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_sec" value="👮 คอนโซลเจ้าหน้าที่ รปภ.&#xa;Monitor ทางเข้าสด &amp; สั่งเปิดไม้กั้นฉุกเฉิน" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F2B3A;strokeColor=#38BDF8;fontColor=#FFFFFF;fontSize=12;" vertex="1" parent="lane_db">
+          <mxGeometry x="40" y="420" width="270" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="ui_admin" value="👑 คอนโซลผู้ดูแลระบบ (Admin)&#xa;จัดการผู้ใช้, รถ, กำหนดสิทธิ์, ดู Logs ทั้งหมด" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#331A24;strokeColor=#F43F5E;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="40" y="525" width="270" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- ================= EDGES ================= -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#FF4D9B;strokeWidth=2;" edge="1" parent="1" source="hw_car" target="hw_cam">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38BDF8;strokeWidth=2;" edge="1" parent="1" source="hw_cam" target="ai_crop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#A855F7;strokeWidth=2;" edge="1" parent="1" source="ai_crop" target="ai_deep">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#10B981;strokeWidth=2;" edge="1" parent="1" source="ai_deep" target="ai_py">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#FF4D9B;strokeWidth=2;" edge="1" parent="1" source="ai_py" target="ai_pub">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38BDF8;strokeWidth=2;" edge="1" parent="1" source="ai_pub" target="be_mqtt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#94A3B8;strokeWidth=2;" edge="1" parent="1" source="be_mqtt" target="be_filter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F59E0B;strokeWidth=2;" edge="1" parent="1" source="be_filter" target="be_decide">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#22C55E;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="be_decide" target="be_open">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#EF4444;strokeWidth=2;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="be_decide" target="be_deny">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1150" y="345" />
+              <mxPoint x="1150" y="538" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#22C55E;strokeWidth=2;dashed=1;" edge="1" parent="1" source="be_open" target="hw_esp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="428" />
+              <mxPoint x="780" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4ADE80;strokeWidth=2;" edge="1" parent="1" source="hw_esp" target="hw_servo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38BDF8;strokeWidth=2;" edge="1" parent="1" source="hw_esp" target="hw_lcd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F87171;strokeWidth=2;" edge="1" parent="1" source="hw_esp" target="hw_led">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#FACC15;strokeWidth=2;" edge="1" parent="1" source="hw_hcsr04" target="hw_esp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#FACC15;strokeWidth=2;dashed=1;" edge="1" parent="1" source="hw_esp" target="be_slots">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="300" />
+              <mxPoint x="780" y="648" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#60A5FA;strokeWidth=2;" edge="1" parent="1" source="be_open" target="db_sqlite">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38BDF8;strokeWidth=2;" edge="1" parent="1" source="be_api" target="ui_kiosk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#EC4899;strokeWidth=2;" edge="1" parent="1" source="be_api" target="ui_user">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38BDF8;strokeWidth=2;" edge="1" parent="1" source="be_api" target="ui_sec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F43F5E;strokeWidth=2;" edge="1" parent="1" source="be_api" target="ui_admin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
