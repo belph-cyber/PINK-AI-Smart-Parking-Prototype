@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Smart AI Parking - Digital Kiosk & Car Tracker</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --card-bg: rgba(18, 22, 34, 0.9);
+      --pink-neon: #ff007f;
+      --pink-glow: rgba(255, 0, 127, 0.4);
+      --green-neon: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.5);
+      --red-neon: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.5);
+      --cyan-neon: #06b6d4;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #171d30 0%, #06080d 100%);
+      color: var(--text-main);
+      font-family: 'Kanit', sans-serif;
+      min-height: 100vh;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* TOP BAR MINIMAL */
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      background: rgba(11, 14, 23, 0.75);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 100;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--pink-neon), #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #fff;
+      box-shadow: 0 0 16px var(--pink-glow);
+    }
+
+    .brand-text {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    /* VIEW SELECTOR BUTTONS */
+    .view-switcher {
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 4px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .switch-btn {
+      padding: 8px 18px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Kanit', sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+    }
+
+    .switch-btn.active {
+      background: linear-gradient(135deg, var(--pink-neon), #d946ef);
+      color: #fff;
+      box-shadow: 0 0 16px var(--pink-glow);
+    }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .clock-tag {
+      font-family: 'Orbitron', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 6px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--pink-neon);
+      color: var(--pink-neon);
+    }
+
+    /* FULLSCREEN CONTENT CONTAINER */
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      height: calc(100vh - 65px);
+      overflow-y: auto;
+    }
+
+    .fullscreen-pane {
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: 24px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .fullscreen-pane.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* ==============================================================
+       PANE 1: GATE DISPLAY (โชว์แค่ ทะเบียน + จังหวัด + ชื่อผู้ใช้ เต็มจอ)
+       ============================================================== */
+    .gate-fullscreen-box {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      text-align: center;
+      margin: auto;
+    }
+
+    .giant-plate-card {
+      width: 100%;
+      max-width: 760px;
+      background: #ffffff;
+      border: 10px solid #0f172a;
+      border-radius: 36px;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.7), 0 0 60px rgba(255, 0, 127, 0.2);
+      padding: 28px 40px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .plate-screw {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #475569;
+      border: 3px solid #cbd5e1;
+      top: 24px;
+    }
+    .plate-screw.left { left: 40px; }
+    .plate-screw.right { right: 40px; }
+
+    .giant-plate-number {
+      font-size: clamp(60px, 10vw, 110px);
+      font-weight: 900;
+      color: #090d16;
+      letter-spacing: 6px;
+      line-height: 1;
+      font-family: 'Kanit', sans-serif;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .giant-plate-province {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: 2px;
+    }
+
+    .user-name-banner {
+      width: 100%;
+      max-width: 760px;
+      background: rgba(18, 22, 34, 0.95);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      padding: 20px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .user-avatar-circle {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink-neon), #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px var(--pink-glow);
+    }
+
+    .user-name-text {
+      font-size: clamp(24px, 4vw, 38px);
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .gate-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 34px;
+      border-radius: 999px;
+      font-size: clamp(16px, 2.5vw, 24px);
+      font-weight: 800;
+      letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+
+    .gate-status-pill.granted {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 2px solid #10b981;
+      box-shadow: 0 0 35px var(--green-glow);
+    }
+
+    .gate-status-pill.denied {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 2px solid #ef4444;
+      box-shadow: 0 0 35px var(--red-glow);
+    }
+
+    .gate-status-pill.standby {
+      background: rgba(148, 163, 184, 0.1);
+      color: #94a3b8;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+    }
+
+    /* ==============================================================
+       PANE 2: SINGLE FLOOR STATUS (โชว์ชั้นเดียวเต็มจอ + รายชื่อรถบนชั้น)
+       ============================================================== */
+    .floor-single-wrapper {
+      width: 100%;
+      max-width: 1050px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      margin: auto;
+      gap: 16px;
+    }
+
+    .floor-select-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(18, 22, 34, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 10px 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .floor-select-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .floor-select-label {
+      font-size: 16px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .floor-dropdown {
+      background: #0f1422;
+      color: #fff;
+      font-family: 'Kanit', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 12px;
+      border: 2px solid var(--pink-neon);
+      outline: none;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
+    }
+
+    .floor-dropdown option {
+      background: #0f1422;
+      color: #fff;
+    }
+
+    .quick-nav-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-step {
+      padding: 8px 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Kanit', sans-serif;
+      transition: all 0.2s;
+    }
+    .btn-step:hover {
+      background: var(--pink-neon);
+    }
+
+    .single-floor-giant-card {
+      background: var(--card-bg);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+
+    .floor-name-banner {
+      font-size: clamp(28px, 4.5vw, 48px);
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sensor-indicator {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 14px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-top: 4px;
+    }
+
+    .giant-metric-box {
+      margin: 12px 0;
+    }
+
+    .giant-free-number {
+      font-size: clamp(75px, 13vw, 130px);
+      font-weight: 900;
+      font-family: 'Orbitron', monospace;
+      color: var(--green-neon);
+      text-shadow: 0 0 35px var(--green-glow);
+      line-height: 0.95;
+    }
+
+    .giant-free-number.full {
+      color: var(--red-neon);
+      text-shadow: 0 0 35px var(--red-glow);
+    }
+
+    .giant-free-label {
+      font-size: clamp(20px, 3vw, 28px);
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .single-floor-stats-row {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      max-width: 600px;
+      justify-content: space-around;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 16px;
+      padding: 12px 20px;
+      margin-top: 8px;
+    }
+
+    .sf-stat-item {
+      text-align: center;
+    }
+
+    .sf-stat-val {
+      font-size: 24px;
+      font-weight: 800;
+      font-family: 'Orbitron', monospace;
+      color: #f1f5f9;
+    }
+
+    .sf-stat-lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .giant-progress-wrap {
+      width: 100%;
+      max-width: 600px;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 14px;
+    }
+
+    .giant-progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--green-neon), #38bdf8);
+      transition: width 0.5s ease;
+    }
+
+    .giant-progress-fill.full {
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+
+    /* CARS ON SELECTED FLOOR */
+    .floor-cars-box {
+      width: 100%;
+      background: rgba(18, 22, 34, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 16px 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .floor-cars-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+
+    .floor-cars-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .floor-cars-badge {
+      background: rgba(255, 0, 127, 0.15);
+      color: var(--pink-neon);
+      border: 1px solid rgba(255, 0, 127, 0.3);
+      padding: 3px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .floor-cars-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      min-height: 50px;
+      align-items: center;
+    }
+
+    .car-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+
+    .car-chip:hover {
+      border-color: var(--pink-neon);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 0, 127, 0.25);
+    }
+
+    .car-chip-plate {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+
+    .car-chip-pos {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .pos-head {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .pos-tail {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .car-chip-time {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'Orbitron', monospace;
+    }
+
+    .no-cars-notice {
+      color: var(--text-muted);
+      font-size: 14px;
+      font-style: italic;
+      padding: 8px 0;
+    }
+
+    /* ==============================================================
+       PANE 3: ALL FLOORS CAR TRACKER (ติดตามรถทุกชั้น 1 - 5)
+       ============================================================== */
+    .tracker-wrapper {
+      width: 100%;
+      max-width: 1280px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: auto;
+    }
+
+    .tracker-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(18, 22, 34, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 12px 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    .tracker-title {
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    .tracker-search-wrap {
+      position: relative;
+      width: 320px;
+    }
+
+    .tracker-search-wrap i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .tracker-search-input {
+      width: 100%;
+      background: #0f1422;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 8px 14px 8px 38px;
+      color: #fff;
+      font-family: 'Kanit', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .tracker-search-input:focus {
+      border-color: var(--pink-neon);
+      box-shadow: 0 0 12px rgba(255, 0, 127, 0.3);
+    }
+
+    .floors-board-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 10px;
+    }
+
+    .floor-column-card {
+      background: rgba(18, 22, 34, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.25s;
+    }
+
+    .floor-column-card:hover {
+      border-color: rgba(255, 0, 127, 0.5);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .fc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+
+    .fc-floor-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .fc-free-tag {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 8px;
+    }
+
+    .fc-free-tag.has-space {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .fc-free-tag.full {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .fc-cars-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      overflow-y: auto;
+      max-height: 520px;
+    }
+
+    .fc-car-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .fc-car-item.highlighted {
+      border-color: var(--pink-neon);
+      background: rgba(255, 0, 127, 0.15);
+      box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+    }
+
+    .fc-car-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .fc-plate {
+      font-weight: 800;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .fc-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'Orbitron', monospace;
+    }
+
+    .fc-pos-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 900px) {
+      .floors-board-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAV BAR -->
+  <header class="top-nav">
+    <div class="brand-group">
+      <div class="brand-icon">
+        <i class="fa-solid fa-parking"></i>
+      </div>
+      <div class="brand-text">SMART AI PARKING</div>
+    </div>
+
+    <!-- 3 MAIN TABS -->
+    <nav class="view-switcher">
+      <button class="switch-btn active" id="btn-tab-gate" onclick="switchView('gate')">
+        <i class="fa-solid fa-id-card"></i> หน้าจอหน้าไม้กั้น (Gate Screen)
+      </button>
+      <button class="switch-btn" id="btn-tab-floor" onclick="switchView('floor')">
+        <i class="fa-solid fa-layer-group"></i> เช็คที่ว่างรายชั้น (Floor Status)
+      </button>
+      <button class="switch-btn" id="btn-tab-tracker" onclick="switchView('tracker')">
+        <i class="fa-solid fa-location-crosshairs"></i> 📍 ติดตามรถในอาคาร (Car Tracker)
+      </button>
+    </nav>
+
+    <div class="top-right">
+      <span id="kiosk-api-state" class="clock-tag" style="font-size:10px;">API • รอข้อมูล</span>
+      <div class="clock-tag" id="kiosk-clock">12:00:00</div>
+      <button class="icon-btn" onclick="toggleFullscreen()" title="เต็มจอ iPad">
+        <i class="fa-solid fa-expand"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN FULLSCREEN VIEW CONTAINER -->
+  <main class="content-area">
+
+    <!-- ==============================================================
+         VIEW 1: GATE DISPLAY (โชว์แค่ ทะเบียน + จังหวัด + ชื่อผู้ใช้ เต็มจอ)
+         ============================================================== -->
+    <section class="fullscreen-pane active" id="pane-gate">
+      <div class="gate-fullscreen-box">
+
+        <!-- THAI LICENSE PLATE (BIG BOLD) -->
+        <div class="giant-plate-card">
+          <span class="plate-screw left"></span>
+          <span class="plate-screw right"></span>
+          <div class="giant-plate-number" id="gate-plate-no">-- ----</div>
+          <div class="giant-plate-province" id="gate-plate-prov">กรุงเทพมหานคร</div>
+        </div>
+
+        <!-- USER NAME BANNER (CLEAR & BIG) -->
+        <div class="user-name-banner">
+          <div class="user-avatar-circle">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div class="user-name-text" id="gate-user-name">รอสแกนป้ายทะเบียน...</div>
+        </div>
+
+        <!-- STATUS PILL -->
+        <div class="gate-status-pill standby" id="gate-status-badge">
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          <span id="gate-status-text">กรุณาชะลอความเร็วเพื่ออ่านป้ายทะเบียน</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==============================================================
+         VIEW 2: SINGLE FLOOR STATUS (โชว์ชั้นเดียวเต็มจอ + รายชื่อรถบนชั้น)
+         ============================================================== -->
+    <section class="fullscreen-pane" id="pane-floor">
+      <div class="floor-single-wrapper">
+
+        <!-- DROPDOWN & QUICK NAVIGATION BAR -->
+        <div class="floor-select-bar">
+          <div class="floor-select-group">
+            <span class="floor-select-label"><i class="fa-solid fa-building"></i> เลือกดูชั้น:</span>
+            <select class="floor-dropdown" id="floor-select" onchange="onFloorSelectChange(this.value)">
+              <option value="1">ชั้น 1 (เซนเซอร์จริง HC-SR04)</option>
+              <option value="2">ชั้น 2 (กล้อง LPR หัว-ท้ายชั้น)</option>
+              <option value="3">ชั้น 3 (กล้อง LPR หัว-ท้ายชั้น)</option>
+              <option value="4">ชั้น 4 (กล้อง LPR หัว-ท้ายชั้น)</option>
+              <option value="5">ชั้น 5 (กล้อง LPR หัว-ท้ายชั้น)</option>
+            </select>
+          </div>
+
+          <div class="quick-nav-btns">
+            <button class="btn-step" onclick="stepFloor(-1)"><i class="fa-solid fa-chevron-left"></i> ชั้นก่อนหน้า</button>
+            <button class="btn-step" onclick="stepFloor(1)">ชั้นถัดไป <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+
+        <!-- BIG GIANT CARD FOR SELECTED FLOOR -->
+        <div class="single-floor-giant-card">
+          <div class="floor-name-banner" id="sf-floor-name">
+            <i class="fa-solid fa-square-parking" style="color:var(--pink-neon);"></i>
+            <span>ชั้น 1</span>
+          </div>
+
+          <div class="sensor-indicator" id="sf-sensor-type">
+            <i class="fa-solid fa-microchip"></i> ตรวจจับด้วยเซนเซอร์วัดระยะทางจริง HC-SR04
+          </div>
+
+          <!-- GIANT FREE NUMBER -->
+          <div class="giant-metric-box">
+            <div class="giant-free-number" id="sf-free-count">2</div>
+            <div class="giant-free-label" id="sf-free-text">ช่องว่างพร้อมจอด</div>
+          </div>
+
+          <!-- SUMMARY ROW -->
+          <div class="single-floor-stats-row">
+            <div class="sf-stat-item">
+              <div class="sf-stat-val" style="color:var(--green-neon);" id="sf-stat-free">2</div>
+              <div class="sf-stat-lbl">ว่าง (ช่อง)</div>
+            </div>
+            <div class="sf-stat-item">
+              <div class="sf-stat-val" style="color:var(--pink-neon);" id="sf-stat-occupied">0</div>
+              <div class="sf-stat-lbl">จอดแล้ว (คัน)</div>
+            </div>
+            <div class="sf-stat-item">
+              <div class="sf-stat-val" style="color:#38bdf8;" id="sf-stat-total">2</div>
+              <div class="sf-stat-lbl">ทั้งหมด (ช่อง)</div>
+            </div>
+          </div>
+
+          <!-- OCCUPANCY BAR -->
+          <div class="giant-progress-wrap">
+            <div class="giant-progress-fill" id="sf-progress-bar" style="width: 0%;"></div>
+          </div>
+
+          <!-- NO-PARKING ZONE STATUS (FLOOR 1 SENSOR #3) -->
+          <div id="sf-no-park-box" style="margin-top: 14px; padding: 10px 18px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i class="fa-solid fa-ban" style="color:#ef4444; font-size:16px;"></i>
+              <span style="font-size:13px; font-weight:700; color:#fff;">จุดตรวจจับช่องห้ามจอด (HC-SR04 #3):</span>
+            </div>
+            <span id="sf-no-park-pill" style="font-size:12px; font-weight:700; padding:4px 12px; border-radius:999px; background:rgba(74,222,128,0.15); color:#4ade80;">
+              🟡 ไม่ทราบ • รอข้อมูลเซนเซอร์
+            </span>
+          </div>
+        </div>
+
+        <!-- CARS DETECTED ON THIS FLOOR -->
+        <div class="floor-cars-box">
+          <div class="floor-cars-head">
+            <div class="floor-cars-title">
+              <i class="fa-solid fa-satellite-dish" style="color:var(--pink-neon);"></i>
+              <span>🚗 รถที่ตรวจพบว่ากำลังอยู่ในชั้นนี้ (จากกล้อง LPR หัว-ท้ายชั้น)</span>
+            </div>
+            <span class="floor-cars-badge" id="sf-cars-badge">0 คัน</span>
+          </div>
+          <div class="floor-cars-grid" id="sf-cars-list">
+            <span class="no-cars-notice">ยังไม่มีรถที่ตรวจพบในชั้นนี้</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==============================================================
+         VIEW 3: ALL FLOORS LIVE CAR TRACKER (ติดตามรถทุกชั้น)
+         ============================================================== -->
+    <section class="fullscreen-pane" id="pane-tracker">
+      <div class="tracker-wrapper">
+        
+        <div class="tracker-top-bar">
+          <div class="tracker-title">
+            <i class="fa-solid fa-building-circle-check" style="color:var(--pink-neon);"></i>
+            <span>📍 แผนผังติดตามตำแหน่งรถยนต์ทุกชั้น (Live Multi-Floor Tracking)</span>
+          </div>
+          <div class="tracker-search-wrap">
+            <i class="fa-solid fa-search"></i>
+            <input type="text" class="tracker-search-input" id="tracker-search-input" placeholder="ค้นหาเลขทะเบียน เช่น 2กฒ8299..." oninput="filterTrackerCars(this.value)">
+          </div>
+        </div>
+
+        <!-- 5 FLOOR COLUMNS -->
+        <div class="floors-board-grid" id="tracker-floors-grid">
+          <!-- Generated via JS for Floors 1 to 5 -->
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script>
+    let currentView = 'gate';
+    let selectedFloor = '1';
+    let cachedData = { floors: {}, tracked_vehicles: {} };
+    let lastHandledPlate = '';
+    let searchQuery = '';
+
+    // LIVE CLOCK
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('kiosk-clock').innerText = now.toLocaleTimeString('th-TH', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => console.log(err));
+      } else {
+        document.exitFullscreen().catch(err => console.log(err));
+      }
+    }
+
+    // TAB SWITCH
+    function switchView(viewName) {
+      currentView = viewName;
+      document.getElementById('btn-tab-gate').classList.toggle('active', viewName === 'gate');
+      document.getElementById('btn-tab-floor').classList.toggle('active', viewName === 'floor');
+      document.getElementById('btn-tab-tracker').classList.toggle('active', viewName === 'tracker');
+
+      document.getElementById('pane-gate').classList.toggle('active', viewName === 'gate');
+      document.getElementById('pane-floor').classList.toggle('active', viewName === 'floor');
+      document.getElementById('pane-tracker').classList.toggle('active', viewName === 'tracker');
+    }
+
+    // FLOOR DROPDOWN CHANGE
+    function onFloorSelectChange(fVal) {
+      selectedFloor = String(fVal);
+      renderSingleFloor(cachedData.floors || {});
+    }
+
+    function stepFloor(delta) {
+      let cur = parseInt(selectedFloor) || 1;
+      cur += delta;
+      if (cur < 1) cur = 5;
+      if (cur > 5) cur = 1;
+      selectedFloor = String(cur);
+      document.getElementById('floor-select').value = selectedFloor;
+      renderSingleFloor(cachedData.floors || {});
+    }
+
+    // SOUND
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } catch (e) {}
+    }
+
+    // SEARCH FILTER
+    function filterTrackerCars(val) {
+      searchQuery = (val || '').trim().toLowerCase();
+      renderAllFloorsTracker(cachedData.floors || {});
+    }
+
+    // POLLING DATA
+    async function poll() {
+      try {
+        const res = await PINKApiClient.request('/api/floors', { auth: false });
+        if (!res.ok) return;
+        const data = await res.json();
+        cachedData = data;
+
+        renderGatePane(data);
+        renderSingleFloor(data.floors || {});
+        renderAllFloorsTracker(data.floors || {});
+      } catch (e) {
+        console.warn('Poll error:', e);
+      }
+    }
+
+    window.addEventListener('pink-api-state', (event) => {
+      const node = document.getElementById('kiosk-api-state');
+      if (!node) return;
+      const state = event.detail?.state || 'ERROR';
+      node.textContent = state === 'LIVE' ? 'API • LIVE' : (state === 'STALE' ? 'API • STALE' : 'API • OFFLINE');
+      node.style.color = state === 'LIVE' ? '#86EFAC' : '#FDE68A';
+      if (state !== 'LIVE') {
+        const badge = document.getElementById('gate-status-badge');
+        if (badge) {
+          badge.className = 'gate-status-pill standby';
+          badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>ข้อมูลเก่าหรือออฟไลน์ • สถานะรถและไม้กั้นไม่ทราบ</span>';
+        }
+      }
+    });
+
+    setInterval(() => {
+      const lastSuccessAt = PINKApiClient.lastSuccessAt;
+      if (lastSuccessAt && Date.now() - lastSuccessAt > 5000) {
+        window.dispatchEvent(new CustomEvent('pink-api-state', { detail: { state: 'STALE' } }));
+      }
+    }, 2000);
+
+    // 1. RENDER GATE: โชว์แค่ ทะเบียน + จังหวัด + ชื่อผู้ใช้
+    function renderGatePane(data) {
+      const p = data.gate_plate || {};
+      const plateAgeMs = p.observed_at ? Date.now() - new Date(p.observed_at).getTime() : Infinity;
+      const plateFresh = Number.isFinite(plateAgeMs) && plateAgeMs >= 0 && plateAgeMs <= 60000;
+      const plateNo = plateFresh ? p.plate_read : '-- ----';
+      const prov = p.province || 'กรุงเทพมหานคร';
+      const userName = plateFresh ? (p.student_name || 'รอเจ้าหน้าที่ตรวจสอบ') : 'ผู้มาติดต่อ / รถทั่วไป';
+
+      if (plateFresh && p.plate_read && p.plate_read !== lastHandledPlate) {
+        lastHandledPlate = p.plate_read;
+        playBeep();
+      }
+
+      document.getElementById('gate-plate-no').innerText = plateNo;
+      document.getElementById('gate-plate-prov').innerText = prov;
+      document.getElementById('gate-user-name').innerText = userName;
+
+      const badge = document.getElementById('gate-status-badge');
+      if (!plateFresh && p.plate_read) {
+        badge.className = 'gate-status-pill standby';
+        badge.innerHTML = '<i class="fa-solid fa-clock"></i> <span>รายการอ่านป้ายเก่า • รอเหตุการณ์ใหม่</span>';
+      } else if (p.result === 'REVIEW_REQUIRED' || p.review_status === 'PENDING') {
+        badge.className = 'gate-status-pill standby';
+        badge.innerHTML = '<i class="fa-solid fa-user-shield"></i> <span>AI อ่านป้ายแล้ว • รอเจ้าหน้าที่ตรวจสอบ • ยังไม่เปิดไม้กั้น</span>';
+      } else if (p.result === 'GRANTED') {
+        badge.className = 'gate-status-pill standby';
+        badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> <span>อนุมัติรายการแล้ว • สถานะไม้กั้นยังไม่ยืนยัน</span>';
+      } else if (p.result === 'DENIED' || p.result === 'NOT_FOUND') {
+        badge.className = 'gate-status-pill denied';
+        badge.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> <span>ไม่พบสิทธิ์เข้าอาคาร (DENIED)</span>';
+      } else {
+        badge.className = 'gate-status-pill standby';
+        badge.innerHTML = '<i class="fa-solid fa-car"></i> <span>กรุณาชะลอความเร็วเพื่ออ่านป้ายทะเบียน</span>';
+      }
+    }
+
+    // 2. RENDER SINGLE FLOOR: โชว์ชั้นเดียวเต็มจอ + รายชื่อรถบนชั้นนั้น
+    function renderSingleFloor(floors) {
+      const fl = floors[selectedFloor] || {
+        name: `ชั้น ${selectedFloor}`,
+        total: 0,
+        occupied: 0,
+        free: 0,
+        unknown: 0,
+        data_state: 'STALE_OR_NO_EVIDENCE',
+        cars: [],
+        sensor_based: selectedFloor === '1'
+      };
+
+      const isKnown = fl.data_state === 'LIVE';
+      const isFull = isKnown && fl.total > 0 && fl.free <= 0 && (fl.unknown || 0) === 0;
+      const occPct = fl.total > 0 ? Math.round((fl.occupied / fl.total) * 100) : 0;
+
+      // Header & Sensor
+      document.getElementById('sf-floor-name').innerHTML = `
+        <i class="fa-solid fa-square-parking" style="color:var(--pink-neon);"></i>
+        <span>${fl.name}</span>
+      `;
+
+      const sensorTag = document.getElementById('sf-sensor-type');
+      if (fl.sensor_based) {
+        sensorTag.innerHTML = '<i class="fa-solid fa-microchip"></i> ตรวจจับด้วยเซนเซอร์วัดระยะทางจริง HC-SR04';
+      } else {
+        sensorTag.innerHTML = '<i class="fa-solid fa-camera"></i> ตรวจจับด้วยระบบกล้อง LPR หน้า-หลังข้ามชั้น';
+      }
+
+      // Giant Free Count
+      const freeEl = document.getElementById('sf-free-count');
+      const freeTextEl = document.getElementById('sf-free-text');
+      if (!isKnown) {
+        freeEl.innerText = '--';
+        freeEl.className = 'giant-free-number full';
+        freeTextEl.innerText = 'สถานะไม่ทราบ • ไม่มีหลักฐานสดจากเซนเซอร์';
+      } else if (isFull) {
+        freeEl.innerText = 'เต็ม';
+        freeEl.className = 'giant-free-number full';
+        freeTextEl.innerText = 'ไม่มีช่องจอดว่างในชั้นนี้';
+      } else {
+        freeEl.innerText = fl.free;
+        freeEl.className = 'giant-free-number';
+        freeTextEl.innerText = `ยืนยันช่องว่าง ${fl.free} • ไม่ทราบ ${fl.unknown || 0}`;
+      }
+
+      // Stats Row
+      document.getElementById('sf-stat-free').innerText = fl.free;
+      document.getElementById('sf-stat-occupied').innerText = fl.occupied;
+      document.getElementById('sf-stat-total').innerText = isKnown ? `${fl.total} (ไม่ทราบ ${fl.unknown || 0})` : '--';
+
+      // Progress bar
+      const bar = document.getElementById('sf-progress-bar');
+      bar.style.width = `${occPct}%`;
+      bar.className = occPct >= 100 ? 'giant-progress-fill full' : 'giant-progress-fill';
+
+      // Cars List on this floor
+      const cars = fl.cars || [];
+      document.getElementById('sf-cars-badge').innerText = `${cars.length} คัน`;
+
+      // No-parking box (Floor 1)
+      const npBox = document.getElementById('sf-no-park-box');
+      if (npBox) {
+        if (selectedFloor === '1') {
+          npBox.style.display = 'flex';
+          const np = (cachedData && cachedData.esp32) ? cachedData.esp32.no_parking_alert : null;
+          const npPill = document.getElementById('sf-no-park-pill');
+          const noParkFresh = Boolean(cachedData?.esp32?.online && np?.updated_at && (Date.now() - new Date(np.updated_at).getTime()) <= 15000);
+          if (noParkFresh && np.active) {
+            npPill.style.background = 'rgba(239, 68, 68, 0.25)';
+            npPill.style.color = '#ef4444';
+            npPill.style.border = '1px solid #ef4444';
+            npPill.innerHTML = `🚨 มีรถจอดขวาง! (${np.distance_cm ? np.distance_cm + ' ซม.' : 'ตรวจพบ'})`;
+          } else if (noParkFresh) {
+            npPill.style.background = 'rgba(74, 222, 128, 0.15)';
+            npPill.style.color = '#4ade80';
+            npPill.style.border = 'none';
+            npPill.innerHTML = '🟢 ปลอดภัย (ว่าง)';
+          } else {
+            npPill.style.background = 'rgba(251,191,36,0.15)';
+            npPill.style.color = '#FDE68A';
+            npPill.style.border = '1px solid rgba(251,191,36,0.45)';
+            npPill.innerHTML = '🟡 ไม่ทราบ • เซนเซอร์ออฟไลน์/ข้อมูลเก่า';
+          }
+        } else {
+          npBox.style.display = 'none';
+        }
+      }
+
+      const carsListEl = document.getElementById('sf-cars-list');
+      if (cars.length === 0) {
+        carsListEl.innerHTML = '<span class="no-cars-notice">ยังไม่มีรถที่ตรวจพบบนชั้นนี้</span>';
+      } else {
+        carsListEl.innerHTML = cars.map(c => {
+          const isHead = (c.pos || 'head') === 'head';
+          const posClass = isHead ? 'pos-head' : 'pos-tail';
+          const posLabel = isHead ? '🟢 หัวชั้น (ทางขึ้น)' : '🟡 ท้ายชั้น (ทางวน)';
+          return `
+            <div class="car-chip" style="display:flex; align-items:center; gap:14px; padding:10px 16px;">
+              <i class="fa-solid fa-car" style="color:var(--pink-neon); font-size:20px;"></i>
+              <div style="flex:1;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="car-chip-plate">${c.plate_display || c.plate}</span>
+                  <span class="car-chip-pos ${posClass}">${posLabel}</span>
+                </div>
+                ${c.owner_name ? `<div style="font-size:12px; color:#cbd5e1; margin-top:2px;"><i class="fa-solid fa-user" style="color:var(--pink-neon); font-size:10px;"></i> ${c.owner_name} <span style="color:var(--text-muted);">(${c.owner_role === 'student' ? 'นักศึกษา' : (c.owner_role === 'teacher' ? 'อาจารย์' : 'บุคลากร')})</span></div>` : ''}
+              </div>
+              <span class="car-chip-time"><i class="fa-regular fa-clock"></i> ${c.time || ''}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // 3. RENDER ALL FLOORS TRACKER: แผนผังทุกชั้น 1 ถึง 5
+    function renderAllFloorsTracker(floors) {
+      const grid = document.getElementById('tracker-floors-grid');
+      if (!grid) return;
+      let html = '';
+
+      for (let f = 1; f <= 5; f++) {
+        const fl = floors[String(f)] || {
+          name: `ชั้น ${f}`,
+          total: 0,
+          free: 0,
+          occupied: 0,
+          unknown: 0,
+          data_state: 'STALE_OR_NO_EVIDENCE',
+          cars: []
+        };
+
+        const cars = fl.cars || [];
+        const isKnown = fl.data_state === 'LIVE';
+        const isFull = isKnown && fl.total > 0 && fl.free <= 0 && (fl.unknown || 0) === 0;
+        const tagClass = !isKnown ? 'fc-free-tag full' : (isFull ? 'fc-free-tag full' : 'fc-free-tag has-space');
+        const tagText = !isKnown ? 'ไม่ทราบ' : (isFull ? 'เต็ม' : `ว่าง ${fl.free}/${fl.total} • ไม่ทราบ ${fl.unknown || 0}`);
+
+        let carsHtml = '';
+        if (cars.length === 0) {
+          carsHtml = '<div style="color:var(--text-muted); font-size:12px; padding:16px 0; text-align:center; font-style:italic;">ไม่มีรถอยู่ในชั้นนี้</div>';
+        } else {
+          carsHtml = cars.map(c => {
+            const isMatch = searchQuery && c.plate.toLowerCase().includes(searchQuery);
+            const isHead = (c.pos || 'head') === 'head';
+            const posBadge = isHead ? '<span class="car-chip-pos pos-head">หัวชั้น</span>' : '<span class="car-chip-pos pos-tail">ท้ายชั้น</span>';
+            return `
+              <div class="fc-car-item ${isMatch ? 'highlighted' : ''}">
+                <div class="fc-car-top">
+                  <span class="fc-plate">${c.plate_display || c.plate}</span>
+                  ${posBadge}
+                </div>
+                ${c.owner_name ? `<div style="font-size:11px; color:#cbd5e1; margin:2px 0;"><i class="fa-solid fa-user" style="color:var(--pink-neon); font-size:9px;"></i> ${c.owner_name}</div>` : ''}
+                <div class="fc-pos-row">
+                  <i class="fa-regular fa-clock"></i>
+                  <span>พบเมื่อ ${c.time || '-'}</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        html += `
+          <div class="floor-column-card">
+            <div class="fc-header">
+              <div class="fc-floor-title">
+                <i class="fa-solid fa-layer-group" style="color:var(--pink-neon); margin-right:6px;"></i>
+                <span>${fl.name}</span>
+              </div>
+              <span class="${tagClass}">${tagText}</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between;">
+              <span>กำลังอยู่: <strong style="color:#fff;">${cars.length}</strong> คัน</span>
+              <span>${fl.sensor_based ? 'เซนเซอร์อัลตราโซนิก' : 'กล้อง LPR ประจำชั้น'}</span>
+            </div>
+            <div class="fc-cars-list">
+              ${carsHtml}
+            </div>
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    setInterval(poll, 1000);
+    poll();
+  </script>
+</body>
+</html>

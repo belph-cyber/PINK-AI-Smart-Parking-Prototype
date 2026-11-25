@@ -1,0 +1,7 @@
+# Example variable names only. Copy required names into your private local environment.
+# Do not commit this file with populated credentials.
+CIRA_INGEST_TOKEN=REPLACE_OUT_OF_BAND
+SLOT_STALE_SEC=90
+MQTT_CLOUD_BRIDGE=false
+MQTT_CLOUD_HOST=
+MQTT_CLOUD_PORT=8883

@@ -1,0 +1,2665 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PINK AI Smart Parking - Dashboard</title>
+
+  <!-- STRICT AUTH GATE: Always start at /login if no session token exists -->
+  <script>
+    if (!localStorage.getItem('pink_token')) {
+      window.location.replace('/login');
+    }
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <script src="/static/js/api.js"></script>
+
+  <style>
+    * {
+      font-family: 'Plus Jakarta Sans', 'Prompt', sans-serif;
+    }
+
+    @keyframes pulseAlert {
+      0% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.35); }
+      50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.75); }
+      100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.35); }
+    }
+
+    body.auth-verifying .dashboard-wrapper {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .dashboard-wrapper {
+      transition: opacity 0.18s ease;
+    }
+
+    .role-view-section {
+      display: none;
+      flex-direction: column;
+      gap: 18px;
+      width: 100%;
+    }
+    .role-view-section.active-view {
+      display: flex;
+      animation: pinkai-page-enter 260ms cubic-bezier(.2,.7,.25,1) both;
+    }
+    .student-page-section { display:none; flex-direction:column; gap:18px; width:100%; }
+    .student-page-section.active-student-page { display:flex; animation:pinkai-page-enter 220ms ease both; }
+    .student-page-title { color:#fff; font-size:20px; font-weight:800; margin:0 0 2px; }
+    .vehicle-entry-form { display:none; gap:8px; align-items:end; flex-wrap:wrap; margin-top:12px; padding:14px; border:1px solid rgba(255,77,155,.25); border-radius:14px; background:rgba(255,255,255,.025); }
+    .vehicle-entry-form.open { display:flex; }
+    .vehicle-entry-form label { display:flex; flex-direction:column; gap:5px; color:var(--text-gray); font-size:11px; }
+    .vehicle-entry-form input { min-width:160px; }
+    .chat-fullscreen { padding:16px !important; }
+    .chat-fullscreen .app-modal-content { max-width:none; width:min(1180px,100%); height:min(820px,100%); max-height:none; display:flex; flex-direction:column; }
+    .chat-fullscreen .chat-layout { flex:1; min-height:0 !important; grid-template-columns:300px 1fr !important; }
+    .chat-fullscreen #chat-conv-list { max-height:none !important; }
+    .chat-fullscreen #chat-messages-box { max-height:none !important; }
+    @media(max-width:650px) { .chat-fullscreen { padding:0 !important; } .chat-fullscreen .app-modal-content { border-radius:0; height:100%; padding:16px; } .chat-fullscreen .chat-layout { grid-template-columns:1fr !important; grid-template-rows:180px 1fr; } }
+
+    .app-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 3, 10, 0.85);
+      backdrop-filter: blur(14px);
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .app-modal-content {
+      background: #120f24;
+      border: 1px solid rgba(255, 77, 155, 0.35);
+      border-radius: 22px;
+      padding: 24px;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.85);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .app-modal-wide {
+      max-width: 820px;
+    }
+
+    .admin-tab-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-gray);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .admin-tab-btn:hover {
+      background: rgba(255, 77, 155, 0.12);
+      color: #fff;
+    }
+    .admin-tab-btn.active {
+      background: #FF4D9B;
+      color: #fff;
+      border-color: #FF8ABC;
+      box-shadow: 0 0 12px rgba(255, 77, 155, 0.4);
+    }
+    .admin-tab-panel {
+      display: none;
+    }
+    .admin-tab-panel.active-panel {
+      display: block;
+    }
+
+    .badge-status-available { background: rgba(74, 222, 128, 0.15); color: #4ADE80; border: 1px solid rgba(74, 222, 128, 0.3); }
+    .badge-status-occupied { background: rgba(248, 113, 113, 0.15); color: #F87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+    .badge-status-reserved { background: rgba(251, 146, 60, 0.15); color: #FB923C; border: 1px solid rgba(251, 146, 60, 0.3); }
+    .badge-status-unknown { background: rgba(148, 163, 184, 0.15); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.3); }
+    .badge-status-error { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+    .gate-state-chip { padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.09); display:flex; flex-direction:column; gap:3px; }
+    .gate-state-chip small { font-size:9px; color:var(--text-gray); }
+    .gate-state-chip strong { font-size:10px; color:#E2E8F0; font-weight:600; }
+
+    .chat-conv-item {
+      padding: 9px 11px;
+      border-radius: 11px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .chat-conv-item:hover, .chat-conv-item.active {
+      background: rgba(255, 77, 155, 0.18);
+      border-color: rgba(255, 77, 155, 0.45);
+    }
+    .chat-msg-mine {
+      align-self: flex-end;
+      background: linear-gradient(135deg, rgba(139,92,246,0.35), rgba(109,40,217,0.35));
+      border: 1px solid rgba(167,139,250,0.4);
+      border-radius: 14px 14px 4px 14px;
+      padding: 8px 12px;
+      max-width: 82%;
+    }
+    .chat-msg-theirs {
+      align-self: flex-start;
+      background: rgba(30, 41, 59, 0.65);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px 14px 14px 4px;
+      padding: 8px 12px;
+      max-width: 82%;
+    }
+  </style>
+</head>
+<body class="auth-verifying">
+
+  <!-- Mountain Landscape Backdrop -->
+  <div class="mountain-backdrop"></div>
+
+  <!-- Master Dashboard Window Container -->
+  <div class="dashboard-wrapper">
+
+    <!-- Top Window Controls (macOS Style Dots) -->
+    <div class="window-dots">
+      <div class="window-dot dot-red" title="Close"></div>
+      <div class="window-dot dot-yellow" title="Minimize"></div>
+      <div class="window-dot dot-green" title="Maximize"></div>
+    </div>
+
+    <!-- Dashboard Top Header -->
+    <header class="dashboard-header">
+      <div class="greeting-block">
+        <h1 id="greeting-title-prefix">Good Morning,</h1>
+        <div class="greeting-name" style="font-size: 26px; font-weight: 700; color: #FF4D9B;">
+          <span id="greeting-user-name">กำลังตรวจสอบผู้ใช้งาน...</span> <span style="font-size: 22px;">👋</span>
+        </div>
+        <div class="greeting-motto" id="greeting-motto-text">PINK AI Smart Parking • อาคารจอดรถอัจฉริยะแบบรวมศูนย์</div>
+      </div>
+
+      <!-- Top Right: Verified Role Badge, Actions & Real-Time Clock -->
+      <div class="clock-block">
+
+        <!-- Verified Role Badge + Profile + Logout -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 7px; margin-bottom: 6px; flex-wrap: wrap;">
+          <span id="system-source-badge" style="font-size:10px; font-weight:700; padding:4px 9px; border-radius:999px; background:rgba(148,163,184,.15); border:1px solid rgba(148,163,184,.35); color:#CBD5E1;" title="สถานะการเชื่อมต่อ API">
+            API • กำลังเชื่อมต่อ
+          </span>
+          <span id="verified-role-badge" style="font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: rgba(139,92,246,0.22); border: 1px solid rgba(167,139,250,0.45); color: #EDE9FE;">
+            <i class="fa-solid fa-user-check"></i> กำลังตรวจสอบสิทธิ์
+          </span>
+
+          <button class="role-pill-btn" style="padding: 4px 10px; font-size: 11px; background: rgba(139,92,246,0.18); border-color: rgba(139,92,246,0.4);" onclick="openProfileModal()">
+            <i class="fa-solid fa-id-card"></i> ข้อมูลส่วนตัว
+          </button>
+          <a class="role-pill-btn" id="admin-console-link" href="/admin" style="display:none; padding:4px 10px; font-size:11px; text-decoration:none;">
+            <i class="fa-solid fa-database"></i> Admin Console
+          </a>
+
+          <button class="role-pill-btn" style="padding: 4px 10px; font-size: 11px; background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.45); color: #FCA5A5;" onclick="handleLogout()">
+            <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+          </button>
+        </div>
+
+        <!-- Admin-Only Preview Bar (Strictly hidden for non-Admin users!) -->
+        <div class="role-switcher-pill" id="admin-only-switcher" style="display: none; margin-bottom: 6px;">
+          <button class="role-pill-btn active" id="pill-view-admin" onclick="adminPreviewSection('ADMIN')">
+            <i class="fa-solid fa-user-gear"></i> จัดการระบบ (Admin)
+          </button>
+          <button class="role-pill-btn" id="pill-view-security" onclick="adminPreviewSection('SECURITY')">
+            <i class="fa-solid fa-shield-halved"></i> มุมมอง รปภ.
+          </button>
+          <button class="role-pill-btn" id="pill-view-student" onclick="adminPreviewSection('STUDENT')">
+            <i class="fa-solid fa-graduation-cap"></i> มุมมอง นศ./อาจารย์
+          </button>
+        </div>
+
+        <!-- Real-Time Live Clock & Dynamic Date (Asia/Bangkok) -->
+        <div class="clock-time">
+          <span id="live-time">--:--:--</span><span class="clock-ampm" id="live-ampm">--</span>
+        </div>
+        <div class="clock-date" id="live-date">กำลังโหลดวันและเวลา...</div>
+      </div>
+    </header>
+
+    <!-- Main Body: Left Dock + Content Grid -->
+    <div class="dashboard-body">
+
+      <!-- ========================================== -->
+      <!-- LEFT VERTICAL FLOATING DOCK (ROLE-BASED)   -->
+      <!-- ========================================== -->
+      <aside class="left-dock">
+        <div class="dock-top-group">
+          <div class="dock-btn active" id="dock-btn-home" onclick="navToSection('home')" title="แดชบอร์ดหลัก">
+            <i class="fa-solid fa-house"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-car" onclick="navToSection('car')" title="พิกัดที่จอดรถของฉัน / ผังช่องจอด">
+            <i class="fa-solid fa-square-parking"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-cctv" onclick="navToSection('cctv')" title="กล้องวงจรปิด LPR (เฉพาะ รปภ./Admin)">
+            <i class="fa-solid fa-video"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-ai" onclick="navToSection('ai')" title="คิวตรวจสอบผล AI (เฉพาะ รปภ./Admin)" style="display:none;">
+            <i class="fa-solid fa-microchip"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-gate" onclick="navToSection('gate')" title="ควบคุมไม้กั้น (เฉพาะ รปภ./Admin)">
+            <i class="fa-solid fa-torii-gate"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-calendar" onclick="navToSection('calendar')" title="ปฏิทินและตารางเรียน">
+            <i class="fa-solid fa-calendar-days"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-msg" onclick="navToSection('msg')" title="แชทกับเจ้าหน้าที่รักษาความปลอดภัย">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-history" onclick="navToSection('history')" title="ประวัติการจอดรถ">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div class="dock-btn" id="dock-btn-settings" onclick="navToSection('settings')" title="จัดการระบบสูงสุด (เฉพาะ Admin)">
+            <i class="fa-solid fa-gear"></i>
+          </div>
+        </div>
+
+        <div class="dock-bottom-group">
+          <div class="dock-btn" onclick="openProfileModal()" title="ข้อมูลส่วนบุคคลของฉัน">
+            <i class="fa-solid fa-user"></i>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ========================================== -->
+      <!-- MAIN CONTENT GRID                          -->
+      <!-- ========================================== -->
+      <main class="content-grid">
+
+        <!-- GLOBAL NO-PARKING EMERGENCY ALERT BANNER (Shown on any role when ESP32 HC-SR04 #3 triggers) -->
+        <div id="global-no-park-alert" style="display:none; grid-column: 1 / -1; margin-bottom: 8px; padding: 12px 18px; border-radius: 14px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(185, 28, 28, 0.65)); border: 1.5px solid #EF4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); animation: pulseAlert 1.5s infinite;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <i class="fa-solid fa-triangle-exclamation" style="font-size: 26px; color: #FEF08A;"></i>
+              <div>
+                <div style="font-weight: 800; font-size: 14px; color: #FFF;">⚠️ แจ้งเตือนด่วน: ตรวจพบรถจอดในช่องห้ามจอด! (HC-SR04 #3)</div>
+                <div id="global-no-park-desc" style="font-size: 11.5px; color: #FEE2E2; margin-top: 2px;">
+                  เซนเซอร์วัดระยะทางจริง HC-SR04 #3 ตรวจพบสิ่งกีดขวาง/รถจอดในพื้นที่ห้ามจอด ชั้น 1
+                </div>
+              </div>
+            </div>
+            <button class="btn-add-task" style="background: #DC2626; border: 1px solid #FECACA; font-weight: 700;" onclick="navToSection('cctv')">
+              <i class="fa-solid fa-video"></i> ตรวจสอบกล้องวงจรปิด
+            </button>
+          </div>
+        </div>
+
+        <!-- ################################################################ -->
+        <!-- VIEW 1: STUDENT & TEACHER DASHBOARD (Shared Design, Isolated DB) -->
+        <!-- ################################################################ -->
+        <section id="view-student" class="role-view-section">
+
+          <div id="student-page-home" class="student-page-section active-student-page">
+            <div class="student-page-title">แดชบอร์ดของฉัน</div>
+          </div>
+          <div id="student-page-calendar" class="student-page-section">
+            <div class="student-page-title">ปฏิทินและตารางเรียน</div>
+          </div>
+          <div id="student-page-car" class="student-page-section">
+            <div class="student-page-title">รถและสถานะการจอด</div>
+          </div>
+          <div id="student-page-history" class="student-page-section">
+            <div class="student-page-title">ประวัติการเข้า-ออก</div>
+          </div>
+
+          <!-- TOP ROW: Calendar | Schedule | Live Weather -->
+          <div class="row-top student-content-calendar">
+
+            <!-- Card 1: Dynamic Calendar -->
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">ปฏิทิน (Calendar)</span>
+                <div class="cal-nav">
+                  <i class="fa-solid fa-chevron-left cal-arrow" onclick="navMonth(-1)"></i>
+                  <span id="cal-month-title">--</span>
+                  <i class="fa-solid fa-chevron-right cal-arrow" onclick="navMonth(1)"></i>
+                </div>
+              </div>
+              <div class="cal-grid" id="cal-grid-container"></div>
+            </div>
+
+            <!-- Card 2: Role-Isolated Schedule (Student vs Teacher) -->
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title" id="sched-card-title">ตารางวันนี้ (Today's Schedule)</span>
+                <span style="font-size: 11px; color: var(--purple-light);" id="sched-dept-label">-</span>
+              </div>
+              <div class="schedule-list" id="schedule-list-items">
+                <div style="font-size: 12px; color: var(--text-gray); padding: 12px 0;">กำลังโหลดตารางจากฐานข้อมูล...</div>
+              </div>
+            </div>
+
+            <!-- Card 3: Real-Time Campus Weather (Open-Meteo + Backend Cache) -->
+            <div class="dash-card">
+              <div class="weather-card-inner">
+                <div class="weather-icon-wrap" id="weather-icon-container">
+                  <i class="fa-solid fa-cloud-sun" style="font-size: 36px; color: #F59E0B;"></i>
+                </div>
+                <div class="weather-temp" id="live-weather-temp">--°</div>
+                <div class="weather-condition" id="live-weather-condition">กำลังดึงข้อมูลสภาพอากาศ...</div>
+                <div class="weather-highlow">
+                  <span id="live-weather-max">↑ --°</span>
+                  <span id="live-weather-min">↓ --°</span>
+                </div>
+                <div style="font-size: 10px; color: #94A3B8; margin-top: 3px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                  <span id="live-weather-humidity">ความชื้น --%</span>
+                  <span id="live-weather-wind">ลม -- km/h</span>
+                  <span id="live-weather-rain">ฝน --%</span>
+                </div>
+                <div class="weather-forecast-row" id="live-weather-forecast"></div>
+                <div style="font-size: 9.5px; color: var(--text-muted); margin-top: 4px; text-align: center;" id="live-weather-updated">
+                  อัปเดตล่าสุด: --
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- MIDDLE ROW: MY PARKING HERO CARD -->
+          <div class="row-wide student-content-car" id="section-student-car">
+            <div class="parking-hero-card">
+              <div class="parking-hero-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="floor-badge">
+                    <i class="fa-solid fa-location-dot"></i> สถานะรถของฉันในอาคาร
+                  </span>
+                  <span id="student-parked-badge" style="font-size: 11px; color: #94A3B8; background: rgba(148, 163, 184, 0.15); padding: 3px 10px; border-radius: 12px; font-weight: 600;">
+                    กำลังตรวจสอบสถานะ...
+                  </span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-gray);">
+                  ข้อมูลจริงจากฐานข้อมูลระบบ CiRA LPR & เซนเซอร์อาคาร
+                </div>
+              </div>
+
+              <div class="parking-hero-grid">
+                <div>
+                  <div style="display: flex; align-items: baseline; gap: 14px;">
+                    <div class="parking-plate-badge" id="student-plate-badge">ยังไม่ได้ระบุ</div>
+                    <div class="parking-plate-prov">
+                      <span id="student-plate-province">-</span><br>
+                      <span id="student-vehicle-model" style="color:#FFC0D9; font-size:12px;">-</span>
+                    </div>
+                  </div>
+                  <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn-add-task" onclick="toggleVehicleForm(true)"><i class="fa-solid fa-plus"></i> เพิ่มทะเบียนรถ</button>
+                    <span style="font-size:10px;color:var(--text-gray);">เพิ่มรถของบัญชีนี้ได้หลายคัน • รายการใหม่รอ Admin อนุมัติ</span>
+                  </div>
+                  <form id="vehicle-entry-form" class="vehicle-entry-form" onsubmit="addOwnVehicle(event)">
+                    <label>เลขทะเบียน<input id="own-vehicle-plate" class="search-input-purple" maxlength="16" required autocomplete="off" placeholder="กรอกทะเบียนรถ"></label>
+                    <label>จังหวัด<input id="own-vehicle-province" class="search-input-purple" maxlength="80" required autocomplete="off" placeholder="จังหวัดตามป้ายทะเบียน"></label>
+                    <button class="btn-add-task" id="own-vehicle-submit" type="submit"><i class="fa-solid fa-floppy-disk"></i> บันทึกทะเบียน</button>
+                    <button class="btn-add-task" type="button" onclick="toggleVehicleForm(false)" style="background:#292538;">ยกเลิก</button>
+                    <div id="own-vehicle-feedback" role="status" style="width:100%;font-size:11px;color:var(--text-gray);"></div>
+                  </form>
+                  <div id="student-own-vehicles" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;"></div>
+
+                  <div class="parking-meta-row">
+                    <div class="parking-meta-item">
+                      <i class="fa-solid fa-layer-group"></i>
+                      <div>
+                        <div class="parking-meta-label">ตำแหน่งที่จอดปัจจุบัน</div>
+                        <div class="parking-meta-val" id="student-current-floor" style="color: #FF8ABC; font-size: 14px;">
+                          ไม่อยู่ในอาคารจอดรถ
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="parking-meta-item">
+                      <i class="fa-regular fa-clock"></i>
+                      <div>
+                        <div class="parking-meta-label">วันและเวลาที่เข้าจอด</div>
+                        <div class="parking-meta-val" id="student-entry-time">-</div>
+                      </div>
+                    </div>
+
+                    <div class="parking-meta-item">
+                      <i class="fa-solid fa-hourglass-half"></i>
+                      <div>
+                        <div class="parking-meta-label">ระยะเวลาที่จอด</div>
+                        <div class="parking-meta-val" id="student-parked-duration" style="color: #38BDF8;">-</div>
+                      </div>
+                    </div>
+
+                    <div class="parking-meta-item">
+                      <i class="fa-solid fa-building"></i>
+                      <div>
+                        <div class="parking-meta-label">ที่ว่างทั้งอาคารขณะนี้</div>
+                        <div class="parking-meta-val" id="student-building-free" style="color: #4ADE80;">กำลังโหลด...</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Digital Pass Badge -->
+                <div style="text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 12px 18px; border-radius: 16px;">
+                  <i class="fa-solid fa-qrcode" style="font-size: 50px; color: #fff;"></i>
+                  <div style="font-size: 10px; color: var(--text-gray); margin-top: 6px; font-weight: 600;" id="student-pass-code">PASS</div>
+                  <div style="font-size: 9px; color: #FF8ABC;" id="student-pass-role">Digital Smart Pass</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BOTTOM ROW: Persistent Chat/Alerts & My Parking History -->
+          <div class="row-split-2 student-content-home" id="section-student-bottom">
+
+            <!-- Left: Persistent Chat & Alerts -->
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">
+                  <i class="fa-solid fa-comments" style="color: #FF4D9B; margin-right: 6px;"></i>
+                  แจ้งเตือนจากระบบและ รปภ.
+                </span>
+                <button class="btn-add-task" onclick="navToSection('msg')">
+                  <i class="fa-solid fa-comments"></i> เปิดหน้าแชท
+                </button>
+              </div>
+              <div id="student-alert-stream" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;">
+                <div style="font-size: 12px; color: var(--text-gray);">กำลังโหลดประวัติข้อความและการแจ้งเตือน...</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="dash-card student-content-history" id="section-student-history">
+            <div class="card-header-row"><span class="card-title"><i class="fa-solid fa-clock-rotate-left" style="color:#38BDF8;margin-right:6px;"></i>ประวัติการเข้า-ออกของฉัน</span><span style="font-size:11px;color:var(--text-gray);">Asia/Bangkok</span></div>
+            <div style="overflow-x:auto;"><table class="glass-table"><thead><tr><th>ทะเบียน</th><th>วัน/เวลาเข้า</th><th>เวลาออก</th><th>ชั้น/ช่อง</th><th>สถานะ</th></tr></thead><tbody id="student-history-table-body"><tr><td colspan="5" style="text-align:center;color:var(--text-gray);">กำลังโหลดประวัติการจอด...</td></tr></tbody></table></div>
+          </div>
+        </section>
+
+        <!-- ################################################################ -->
+        <!-- VIEW 2: SECURITY COMMAND VIEW                                    -->
+        <!-- ################################################################ -->
+        <section id="view-security" class="role-view-section">
+
+          <!-- ROW 1: Building Capacity Summary -->
+          <div class="row-top">
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">ภาพรวมอาคารจอดรถ</span>
+                <span id="dashboard-data-source-badge" style="font-size: 11px; color: #4ADE80;">Database Live</span>
+              </div>
+              <div style="display: flex; justify-content: space-around; text-align: center; margin-top: 10px;">
+                <div>
+                  <div style="font-size: 28px; font-weight: 800; color: #4ADE80;" id="kpi-total-free">--</div>
+                  <div style="font-size: 11px; color: var(--text-gray);">ช่องว่างทั้งหมด</div>
+                </div>
+                <div style="border-left: 1px solid rgba(255,255,255,0.1); margin: 0 10px;"></div>
+                <div>
+                  <div style="font-size: 28px; font-weight: 800; color: #FF4D9B;" id="kpi-total-occupied">--</div>
+                  <div style="font-size: 11px; color: var(--text-gray);">รถจอดอยู่ (คัน)</div>
+                </div>
+              </div>
+              <div style="margin-top: 14px; font-size: 11px; color: var(--text-gray); text-align: center;" id="kpi-capacity-desc">
+                กำลังคำนวณอัตราครองพื้นที่จากฐานข้อมูล...
+              </div>
+            </div>
+
+            <div class="dash-card" style="border-color: rgba(255, 77, 155, 0.35);">
+              <div class="card-header-row">
+                <span class="card-title">ชั้น 1 (เซนเซอร์ HC-SR04)</span>
+                <button class="role-pill-btn" style="font-size: 10px; padding: 2px 8px;" onclick="openSecuritySlotsModal()">ตรวจสอบช่องจอด</button>
+              </div>
+              <div style="text-align: center; margin: 6px 0;">
+                <div style="font-size: 38px; font-weight: 800; color: #4ADE80;" id="sec-fl1-free">--</div>
+                <div style="font-size: 11px; color: var(--text-gray);">ช่องว่างพร้อมจอด (ชั้น 1)</div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: #CBD5E1; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                <span>ว่าง: <strong style="color:#4ADE80;" id="sec-fl1-free-sub">-</strong></span>
+                <span>จอดแล้ว: <strong style="color:#F87171;" id="sec-fl1-occ-sub">-</strong></span>
+                <span>สถานะจริงจาก DB</span>
+              </div>
+              <div style="margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;" id="fl1-no-park-box">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                  <i class="fa-solid fa-ban" style="color: #EF4444; font-size: 11.5px;"></i>
+                  <span style="font-size: 10.5px; font-weight: 700; color: #E2E8F0;">ช่องห้ามจอด (HC-SR04 #3)</span>
+                </div>
+                <span id="fl1-no-park-pill" style="font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: rgba(74, 222, 128, 0.15); color: #4ADE80;">
+                  🟡 ไม่ทราบ • รอข้อมูลเซนเซอร์
+                </span>
+              </div>
+            </div>
+
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">สถานะรายชั้น (ชั้น 2 - ชั้น 5)</span>
+                <span style="font-size: 11px; color: var(--text-gray);">LPR Track</span>
+              </div>
+              <div id="sec-upper-floors-list" style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+                <span style="color: var(--text-gray);">กำลังโหลดข้อมูลชั้น 2-5...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ROW 2: Gate Control & Vehicle Plate Search -->
+          <div class="row-split-2" id="section-sec-gate">
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">
+                  <i class="fa-solid fa-torii-gate" style="color: #FF4D9B; margin-right: 6px;"></i>
+                  ควบคุมไม้กั้น เข้า - ออก (Gate Barrier Controls)
+                </span>
+                <span id="esp-mqtt-badge" style="font-size: 11px; color: #FFC0D9;">MQTT Relay • ESP32</span>
+              </div>
+
+              <div id="esp-no-park-banner" style="display:none; margin-bottom: 10px; padding: 8px 12px; border-radius: 10px; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.55); color: #FCA5A5; font-size: 11.5px; font-weight: 600;"></div>
+
+              <div class="gate-btn-group">
+                <button class="btn-gate-action btn-gate-open" onclick="triggerGateControl('gate_in', 'OPEN')">
+                  <i class="fa-solid fa-arrow-up-from-bracket"></i> เปิดไม้กั้นขาเข้า
+                </button>
+                <button class="btn-gate-action btn-gate-close" onclick="triggerGateControl('gate_in', 'CLOSE')">
+                  <i class="fa-solid fa-arrow-down"></i> ปิดไม้กั้นขาเข้า
+                </button>
+                <button class="btn-gate-action btn-gate-open" style="background: linear-gradient(135deg, #3B82F6, #2563EB);" onclick="triggerGateControl('gate_out', 'OPEN')">
+                  <i class="fa-solid fa-arrow-right-from-bracket"></i> เปิดไม้กั้นขาออก
+                </button>
+                <button class="btn-gate-action btn-gate-emergency" onclick="triggerGateControl('all', 'EMERGENCY')">
+                  <i class="fa-solid fa-triangle-exclamation"></i> ปลดล็อกฉุกเฉิน
+                </button>
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:7px; margin-top:12px;">
+                <div class="gate-state-chip"><small>คำสั่ง</small><strong id="gate-command-state">ยังไม่มีคำสั่ง</strong></div>
+                <div class="gate-state-chip"><small>ตัวควบคุมตอบกลับ</small><strong id="gate-ack-state">ยังไม่มีข้อมูล</strong></div>
+                <div class="gate-state-chip"><small>Feedback ทางกายภาพ</small><strong id="gate-physical-state">ไม่ทราบ</strong></div>
+                <div class="gate-state-chip"><small>รถผ่านแล้ว</small><strong id="gate-passage-state">ยังไม่ยืนยัน</strong></div>
+              </div>
+
+              <div style="margin-top: 12px; font-size: 11px; color: var(--text-gray); display: flex; justify-content: space-between;">
+                <span>ทุกคำสั่งบันทึก Audit Log อัตโนมัติ</span>
+                <span id="gate-last-action" style="color: #FFC0D9;">พร้อมรับคำสั่ง</span>
+              </div>
+            </div>
+
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">
+                  <i class="fa-solid fa-magnifying-glass" style="color: #38BDF8; margin-right: 6px;"></i>
+                  ค้นหาตำแหน่งรถและข้อมูลติดต่อสำหรับปฏิบัติงาน
+                </span>
+              </div>
+
+              <div class="search-input-group">
+                <i class="fa-solid fa-search search-icon-inside"></i>
+                <input type="text" id="sec-search-plate-input" class="search-input-purple" placeholder="พิมพ์เลขทะเบียน หรือ รหัส/ชื่อ แล้วกด Enter..." onkeypress="handlePlateSearch(event)">
+              </div>
+
+              <div id="sec-search-result-box" style="margin-top: 10px; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 10px 14px; font-size: 11px; color: var(--text-gray);">
+                ป้อนเลขทะเบียนเพื่อตรวจสอบชั้นที่จอด ช่องจอด และติดต่อเจ้าของรถ
+              </div>
+            </div>
+          </div>
+
+          <!-- ROW 3: 5 CCTV Cameras -->
+          <div class="dash-card" id="section-sec-cctv">
+            <div class="card-header-row">
+              <span class="card-title">
+                <i class="fa-solid fa-video" style="color: #FF4D9B; margin-right: 6px;"></i>
+                กล้องวงจรปิด LPR ในระบบครบ 5 จุด (ทางเข้า + หัว/ท้าย ชั้น 1-2)
+              </span>
+              <button class="btn-add-task" style="padding: 2px 10px;" onclick="refreshCctvStreams()">
+                <i class="fa-solid fa-arrows-rotate"></i> รีเฟรชสัญญาณภาพ
+              </button>
+            </div>
+
+            <div class="cctv-container-5">
+              <div class="cctv-card">
+                <div class="cctv-header">
+                  <span>CAM-01: กล้อง LPR ทางเข้าไม้กั้นหลัก</span>
+                  <span style="color: #FFC0D9; font-size: 10px;">GATE-IN</span>
+                </div>
+                <div class="cctv-video-wrap">
+                  <div class="cctv-overlay-tag"><div class="live-indicator-dot"></div> GATE-IN LPR</div>
+                  <img id="stream-cam-gate" src="/api/cam/frame/gate" alt="Gate Cam">
+                </div>
+              </div>
+
+              <div class="cctv-quad-grid">
+                <div class="cctv-card">
+                  <div class="cctv-header"><span>CAM-02: ชั้น 1 (หัวชั้น)</span><span style="font-size:10px;">FL1-H</span></div>
+                  <div class="cctv-video-wrap">
+                    <div class="cctv-overlay-tag"><div class="live-indicator-dot"></div> FL1-HEAD</div>
+                    <img id="stream-cam-fl1-head" src="/api/cam/frame/fl1_head" alt="FL1 Head">
+                  </div>
+                </div>
+                <div class="cctv-card">
+                  <div class="cctv-header"><span>CAM-03: ชั้น 1 (ท้ายชั้น)</span><span style="font-size:10px;">FL1-T</span></div>
+                  <div class="cctv-video-wrap">
+                    <div class="cctv-overlay-tag"><div class="live-indicator-dot"></div> FL1-TAIL</div>
+                    <img id="stream-cam-fl1-tail" src="/api/cam/frame/fl1_tail" alt="FL1 Tail">
+                  </div>
+                </div>
+                <div class="cctv-card">
+                  <div class="cctv-header"><span>CAM-04: ชั้น 2 (หัวชั้น)</span><span style="font-size:10px;">FL2-H</span></div>
+                  <div class="cctv-video-wrap">
+                    <div class="cctv-overlay-tag"><div class="live-indicator-dot"></div> FL2-HEAD</div>
+                    <img id="stream-cam-fl2-head" src="/api/cam/frame/fl2_head" alt="FL2 Head">
+                  </div>
+                </div>
+                <div class="cctv-card">
+                  <div class="cctv-header"><span>CAM-05: ชั้น 2 (ท้ายชั้น)</span><span style="font-size:10px;">FL2-T</span></div>
+                  <div class="cctv-video-wrap">
+                    <div class="cctv-overlay-tag"><div class="live-indicator-dot"></div> FL2-TAIL</div>
+                    <img id="stream-cam-fl2-tail" src="/api/cam/frame/fl2_tail" alt="FL2 Tail">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI detections are review evidence; approval here never sends a gate command. -->
+          <div class="dash-card" id="section-sec-ai-review" style="margin-bottom:18px;">
+            <div class="card-header-row">
+              <span class="card-title"><i class="fa-solid fa-microchip" style="color:#FFC0D9; margin-right:6px;"></i>คิวตรวจสอบผล AI</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span id="ai-review-source-state" style="font-size:10px; color:var(--text-gray);">รอข้อมูลจาก API</span>
+                <button class="role-pill-btn" style="font-size:10px; padding:3px 8px;" onclick="loadAiReviewQueue()">รีเฟรชคิว</button>
+              </div>
+            </div>
+            <p style="font-size:11px; color:var(--text-gray); margin:0 0 10px;">ผล AI ทุกระดับความมั่นใจต้องให้เจ้าหน้าที่ตรวจภาพและยืนยันก่อน ระบบไม่เปิดไม้กั้นจากผล AI โดยอัตโนมัติ</p>
+            <div id="ai-review-queue" style="display:grid; gap:8px;">
+              <div style="color:var(--text-gray); padding:10px;">กำลังโหลดคิวตรวจสอบ...</div>
+            </div>
+          </div>
+
+          <!-- ROW 4: Security Persistent Chat Dispatch & Access History -->
+          <div class="row-split-2" id="section-sec-history">
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">
+                  <i class="fa-solid fa-comments" style="color: #FF4D9B; margin-right: 6px;"></i>
+                  ส่งข้อความแจ้งเตือนเจ้าของรถ & ศูนย์แชทถาวร
+                </span>
+                <button class="btn-add-task" onclick="openChatCenterModal()">
+                  <i class="fa-solid fa-inbox"></i> เปิดกล่องสนทนาทั้งหมด
+                </button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" id="sec-msg-target-plate" class="search-input-purple" placeholder="ระบุเลขทะเบียนรถปลายทางในระบบ เช่น กบ 1234 หรือ 1กก 9999">
+                <textarea id="sec-msg-content" class="search-input-purple" rows="2" placeholder="พิมพ์ข้อความแจ้งเจ้าของรถ (บันทึกถาวรลง Database)..."></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+                  <button class="btn-add-task" style="background:#EF4444;" onclick="quickFillSecAlert('แจ้งเตือนจาก รปภ.: พบรถของท่านเปิดไฟหน้ารถทิ้งไว้ กรุณาตรวจสอบ')">⚠️ ลืมปิดไฟ</button>
+                  <button class="btn-add-task" style="background:#F59E0B;" onclick="quickFillSecAlert('แจ้งเตือนจาก รปภ.: กรุณาช่วยขยับรถเนื่องจากกีดขวางช่องทางเดินรถ')">🚗 รถจอดขวาง</button>
+                  <button class="btn-add-task" onclick="handleSecuritySendMessage()">
+                    <i class="fa-solid fa-paper-plane"></i> ส่งและบันทึกข้อความ
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="dash-card">
+              <div class="card-header-row">
+                <span class="card-title">
+                  <i class="fa-solid fa-list-check" style="color: #38BDF8; margin-right: 6px;"></i>
+                  ประวัติการสั่งการไม้กั้นและรถเข้า-ออกล่าสุด
+                </span>
+                <span style="font-size: 11px; color: var(--text-gray);">Database Log</span>
+              </div>
+              <div style="overflow-x: auto; max-height: 190px;">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>วัน-เวลา</th>
+                      <th>ทะเบียน/อ้างอิง</th>
+                      <th>ผู้ดำเนินการ</th>
+                      <th>สถานะไม้กั้น</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sec-history-table-body">
+                    <tr><td colspan="4" style="text-align:center; color:var(--text-gray);">กำลังโหลดประวัติ...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ################################################################ -->
+        <!-- VIEW 3: ADMINISTRATOR MASTER COMMAND (ADMIN ROLE ONLY)           -->
+        <!-- ################################################################ -->
+        <section id="view-admin" class="role-view-section">
+          <div class="dash-card" style="border-color: rgba(255, 77, 155, 0.4);">
+            <div class="card-header-row">
+              <div>
+                <span class="card-title" style="font-size: 16px;">
+                  <i class="fa-solid fa-user-shield" style="color: #FF8ABC; margin-right: 8px;"></i>
+                  ศูนย์บริหารจัดการระบบสูงสุด (Administrator Master Command)
+                </span>
+                <p style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">
+                  จัดการผู้ใช้ครบ 4 Roles, จัดการช่องจอด, เชื่อมต่อ Google Sheets (Apps Script), และตรวจสอบประวัติ Login/Audit
+                </p>
+              </div>
+            </div>
+
+            <!-- Admin Tabs -->
+            <div style="display: flex; gap: 8px; margin-top: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; flex-wrap: wrap;">
+              <button class="admin-tab-btn active" id="tab-btn-users" onclick="switchAdminTab('users')">
+                <i class="fa-solid fa-users"></i> 1. จัดการผู้ใช้งาน (Users)
+              </button>
+              <button class="admin-tab-btn" id="tab-btn-slots" onclick="switchAdminTab('slots')">
+                <i class="fa-solid fa-square-parking"></i> 2. จัดการช่องจอด (Slots)
+              </button>
+              <button class="admin-tab-btn" id="tab-btn-sheets" onclick="switchAdminTab('sheets')">
+                <i class="fa-solid fa-table"></i> 3. Google Sheets & Apps Script
+              </button>
+              <button class="admin-tab-btn" id="tab-btn-audit" onclick="switchAdminTab('audit')">
+                <i class="fa-solid fa-file-shield"></i> 4. ประวัติ Login & Audit Trail
+              </button>
+            </div>
+
+            <!-- TAB 1: USER MANAGEMENT -->
+            <div id="admin-panel-users" class="admin-tab-panel active-panel" style="margin-top: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button class="admin-tab-btn active" onclick="filterUserList('', this)">ทุก Role</button>
+                  <button class="admin-tab-btn" onclick="filterUserList('SECURITY', this)">Security</button>
+                  <button class="admin-tab-btn" onclick="filterUserList('STUDENT', this)">Student</button>
+                  <button class="admin-tab-btn" onclick="filterUserList('TEACHER', this)">Teacher</button>
+                  <button class="admin-tab-btn" onclick="filterUserList('ADMIN', this)">Admin</button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="admin-user-search-input" class="search-input-purple" style="padding: 5px 12px; font-size: 12px; width: 210px;" placeholder="ค้นหาชื่อ หรือ รหัสประจำตัว..." oninput="handleUserSearch()">
+                  <button class="btn-add-task" onclick="openCreateUserModal()">
+                    <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งานใหม่
+                  </button>
+                </div>
+              </div>
+
+              <div style="overflow-x: auto; max-height: 400px;">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>รหัสประจำตัว</th>
+                      <th>ชื่อ-นามสกุล</th>
+                      <th>Role</th>
+                      <th>เพศ / อายุ / วันเกิด</th>
+                      <th>เบอร์ติดต่อ</th>
+                      <th>เข้าใช้งานล่าสุด</th>
+                      <th>สถานะ</th>
+                      <th>การจัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-users-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB 2: PARKING SLOT MANAGEMENT -->
+            <div id="admin-panel-slots" class="admin-tab-panel" style="margin-top: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button class="admin-tab-btn active" onclick="filterSlotFloor(null, this)">ทุกชั้น (1-5)</button>
+                  <button class="admin-tab-btn" onclick="filterSlotFloor(1, this)">ชั้น 1</button>
+                  <button class="admin-tab-btn" onclick="filterSlotFloor(2, this)">ชั้น 2</button>
+                  <button class="admin-tab-btn" onclick="filterSlotFloor(3, this)">ชั้น 3</button>
+                  <button class="admin-tab-btn" onclick="filterSlotFloor(4, this)">ชั้น 4</button>
+                  <button class="admin-tab-btn" onclick="filterSlotFloor(5, this)">ชั้น 5</button>
+                </div>
+                <button class="btn-add-task" onclick="openCreateSlotModal()">
+                  <i class="fa-solid fa-plus"></i> เพิ่มช่องจอดใหม่
+                </button>
+              </div>
+
+              <div style="overflow-x: auto; max-height: 360px;">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>รหัสช่อง</th>
+                      <th>ชั้น / โซน</th>
+                      <th>ประเภท</th>
+                      <th>สถานะ</th>
+                      <th>รถที่ครอบครอง</th>
+                      <th>แหล่งข้อมูล</th>
+                      <th>จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-slots-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB 3: GOOGLE SHEETS & APPS SCRIPT -->
+            <div id="admin-panel-sheets" class="admin-tab-panel" style="margin-top: 16px;">
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(139,92,246,0.35); border-radius: 14px; padding: 16px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                  <div>
+                    <h4 style="color:#fff; font-size:14px; margin-bottom: 4px;">
+                      <i class="fa-solid fa-file-Spreadsheet" style="color: #4ADE80;"></i>
+                      เชื่อมต่อ Google Sheets ด้วย Google Apps Script (6 มาตรฐานแผ่นงาน)
+                    </h4>
+                    <p style="font-size: 11.5px; color: var(--text-gray);">
+                      Database (SQLite) เป็น Source of Truth หลัก • ป้องกันข้อมูลซ้ำด้วย Unique Key • <strong>ไม่ส่งออก Password / Hash เด็ดขาด</strong>
+                    </p><div style="margin-top: 6px; font-size: 11.5px;">ตั้งค่า Google Spreadsheet ID ในไฟล์ .env ก่อนใช้งาน</div>
+                  </div>
+
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn-add-task" style="background: #C52C72;" onclick="openAppsScriptCodeModal()">
+                      <i class="fa-solid fa-code"></i> ดู/คัดลอกโค้ด Apps Script (Code.gs)
+                    </button>
+                    <button class="btn-add-task" style="background: #0284C7;" onclick="inspectRemoteGoogleSheet()">
+                      <i class="fa-solid fa-magnifying-glass"></i> ตรวจสอบโครงสร้างชีต
+                    </button>
+                    <button class="btn-add-task" style="background: linear-gradient(135deg, #10B981, #059669);" onclick="triggerSheetsSync()">
+                      <i class="fa-solid fa-rotate"></i> ซิงก์ทั้ง 6 Sheets ทันที
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Apps Script Web App URL Config Box -->
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+                  <label style="font-size: 11.5px; color: #FFC0D9; font-weight: 600; display: block; margin-bottom: 6px;">
+                    วาง Google Apps Script Web App URL (ที่ได้จากการกด Deploy ไฟล์ <code>google_apps_script/Code.gs</code> ลงท้ายด้วย <code>/exec</code>):
+                  </label>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <input type="text" id="sheets-webapp-url-input" class="search-input-purple" style="flex: 1; min-width: 260px;" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+                    <button class="btn-add-task" onclick="saveSheetsWebAppUrl()">
+                      <i class="fa-solid fa-floppy-disk"></i> บันทึก Web App URL
+                    </button>
+                  </div>
+                </div>
+
+                <div style="margin-top: 12px; font-size: 11.5px; color: #CBD5E1; display: flex; gap: 18px; flex-wrap: wrap;">
+                  <span>สถานะการซิงก์: <strong id="sheets-sync-status" style="color: #FBBF24;">PENDING</strong></span>
+                  <span>ซิงก์ล่าสุดเมื่อ: <strong id="sheets-last-sync-time" style="color: #FF8ABC;">-</strong></span>
+                  <span id="sheets-sync-summary" style="color: var(--text-gray);"></span>
+                </div>
+              </div>
+
+              <!-- 6 Sheets Row Count Cards -->
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 12px;">
+                  <div style="font-weight: 700; color: #FFC0D9; font-size: 12px;">Sheet 1: Users</div>
+                  <div style="font-size: 10.5px; color: var(--text-gray);">User ID, รหัส, ชื่อ, Role, สถานะ, วันสร้าง</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #fff; margin-top: 6px;" id="count-sheet-Users">-</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 12px;">
+                  <div style="font-weight: 700; color: #FFC0D9; font-size: 12px;">Sheet 2: Teacher Schedule</div>
+                  <div style="font-size: 10.5px; color: var(--text-gray);">รหัสอาจารย์, ชื่อ, วันสอน, เวลา, วิชา, ห้อง</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #fff; margin-top: 6px;" id="count-sheet-TeacherSchedule">-</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 12px;">
+                  <div style="font-weight: 700; color: #FFC0D9; font-size: 12px;">Sheet 3: Student Schedule</div>
+                  <div style="font-size: 10.5px; color: var(--text-gray);">รหัสนศ., ชื่อ, วันเรียน, เวลา, วิชา, ห้อง</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #fff; margin-top: 6px;" id="count-sheet-StudentSchedule">-</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 12px;">
+                  <div style="font-weight: 700; color: #FFC0D9; font-size: 12px;">Sheet 4: Parking History</div>
+                  <div style="font-size: 10.5px; color: var(--text-gray);">Event ID, รหัสผู้ใช้, ทะเบียน, เข้า-ออก, ชั้น/ช่อง</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #fff; margin-top: 6px;" id="count-sheet-ParkingHistory">-</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 12px;">
+                  <div style="font-weight: 700; color: #FFC0D9; font-size: 12px;">Sheet 5: Login History</div>
+                  <div style="font-size: 10.5px; color: var(--text-gray);">Log ID, รหัส, ชื่อ, Role, Login, Logout, สถานะ</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #fff; margin-top: 6px;" id="count-sheet-LoginHistory">-</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 12px;">
+                  <div style="font-weight: 700; color: #FFC0D9; font-size: 12px;">Sheet 6: Personal Information</div>
+                  <div style="font-size: 10.5px; color: var(--text-gray);">รหัสประจำตัว, ชื่อ, เพศ, อายุ, วันเกิด, เบอร์ติดต่อ</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #fff; margin-top: 6px;" id="count-sheet-PersonalInformation">-</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 4: LOGIN HISTORY & AUDIT TRAIL -->
+            <div id="admin-panel-audit" class="admin-tab-panel" style="margin-top: 16px;">
+              <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+                <i class="fa-solid fa-clock-rotate-left" style="color: #38BDF8;"></i> ประวัติการเข้า-ออกระบบ (Login / Logout History - Sheet 5)
+              </div>
+              <div style="overflow-x: auto; max-height: 220px; margin-bottom: 16px;">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>Log ID</th>
+                      <th>รหัสผู้ใช้</th>
+                      <th>ชื่อผู้ใช้งาน</th>
+                      <th>Role</th>
+                      <th>เวลา Login</th>
+                      <th>เวลา Logout</th>
+                      <th>สถานะ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-login-logs-tbody"></tbody>
+                </table>
+              </div>
+
+              <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+                <i class="fa-solid fa-shield-halved" style="color: #FF4D9B;"></i> บันทึกการปฏิบัติงานสำคัญทั้งหมด (Audit Log)
+              </div>
+              <div style="overflow-x: auto; max-height: 220px;">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>วัน-เวลา</th>
+                      <th>ผู้ดำเนินการ</th>
+                      <th>รายการ</th>
+                      <th>เป้าหมาย</th>
+                      <th>ผลลัพธ์และรายละเอียด</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-audit-logs-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- FLOATING BOTTOM DOCK (ROLE-FILTERED)       -->
+    <!-- ========================================== -->
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 1: PERSONAL INFORMATION (ข้อมูลส่วนบุคคล)           -->
+  <!-- ======================================================== -->
+  <div id="profile-modal" class="app-modal">
+    <div class="app-modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="color:#fff; font-size:16px;">
+          <i class="fa-solid fa-id-card" style="color: #FF4D9B;"></i> ข้อมูลส่วนบุคคล (Personal Information)
+        </h3>
+        <button onclick="closeProfileModal()" style="background:none; border:none; color:var(--text-gray); font-size:20px; cursor:pointer;">&times;</button>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 14px; font-size: 12.5px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">รหัสประจำตัว:</span><strong id="prof-code">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">ชื่อ-นามสกุล:</span><strong id="prof-name">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">บทบาท (Role):</span><strong style="color:#FFC0D9;" id="prof-role">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">เพศ:</span><strong id="prof-gender">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">อายุ:</span><strong id="prof-age">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">วันเกิด:</span><strong id="prof-birth">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">เบอร์ติดต่อ:</span><strong id="prof-phone">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">ทะเบียนรถของฉัน:</span><strong style="color:#4ADE80;" id="prof-veh">-</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color:var(--text-gray);">เข้าใช้งานล่าสุด:</span><strong id="prof-last-login">-</strong></div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+        <button onclick="closeProfileModal()" class="btn-gate-action btn-gate-open" style="flex: initial; padding: 6px 18px;">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 2: PERSISTENT 2-WAY CHAT CENTER (SQLite Backed)    -->
+  <!-- ======================================================== -->
+  <div id="chat-center-modal" class="app-modal chat-fullscreen">
+    <div class="app-modal-content app-modal-wide">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="color:#fff; font-size:16px;">
+          <i class="fa-solid fa-comments" style="color: #FF4D9B;"></i> ระบบแชทและข้อความถาวร (Persistent Chat System)
+        </h3>
+        <button onclick="closeChatCenterModal()" style="background:none; border:none; color:var(--text-gray); font-size:20px; cursor:pointer;">&times;</button>
+      </div>
+
+      <div class="chat-layout" style="display: grid; grid-template-columns: 250px 1fr; gap: 14px; min-height: 360px;">
+        <!-- Left: Conversation List + Search -->
+        <div style="border-right: 1px solid rgba(255,255,255,0.08); padding-right: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <input type="text" id="chat-search-input" class="search-input-purple" style="padding: 6px 10px; font-size: 11.5px;" placeholder="ค้นหาบทสนทนา / ทะเบียน..." oninput="loadChatConversations()">
+          <div id="chat-conv-list" style="display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: 300px; flex: 1;"></div>
+        </div>
+
+        <!-- Right: Active Thread & Reply Box -->
+        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div id="chat-thread-header" style="font-size: 12px; font-weight: 700; color: #FFC0D9; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+            เลือกบทสนทนา หรือพิมพ์ข้อความด้านล่างเพื่อเริ่มสนทนากับเจ้าหน้าที่
+          </div>
+
+          <div id="chat-messages-box" style="flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 250px; padding: 10px 4px;">
+            <div style="font-size: 12px; color: var(--text-gray); text-align: center; margin-top: 40px;">ยังไม่ได้เลือกบทสนทนา</div>
+          </div>
+
+          <div style="display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);">
+            <input type="text" id="chat-reply-plate" class="search-input-purple" style="width: 130px; display: none; font-size: 12px;" placeholder="ทะเบียนรถ...">
+            <input type="text" id="chat-reply-input" class="search-input-purple" style="flex: 1; font-size: 12.5px;" placeholder="พิมพ์ข้อความ... (กด Enter เพื่อส่ง)" onkeypress="if(event.key==='Enter') sendChatMessage()">
+            <button onclick="sendChatMessage()" class="btn-gate-action btn-gate-open" style="flex: initial; padding: 8px 16px;">
+              <i class="fa-solid fa-paper-plane"></i> ส่ง
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 3: ADMIN USER CREATE / EDIT MODAL                  -->
+  <!-- ======================================================== -->
+  <div id="user-edit-modal" class="app-modal">
+    <div class="app-modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="color:#fff; font-size:16px;" id="user-modal-title">จัดการข้อมูลผู้ใช้งาน</h3>
+        <button onclick="closeUserEditModal()" style="background:none; border:none; color:var(--text-gray); font-size:20px; cursor:pointer;">&times;</button>
+      </div>
+      <input type="hidden" id="edit-user-id" value="">
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+        <div>
+          <label style="color: var(--text-gray);">รหัสประจำตัว (Username):</label>
+          <input type="text" id="edit-user-username" class="search-input-purple">
+        </div>
+        <div>
+          <label style="color: var(--text-gray);">ชื่อ-นามสกุล:</label>
+          <input type="text" id="edit-user-name" class="search-input-purple">
+        </div>
+        <div>
+          <label style="color: var(--text-gray);">บทบาท (Role):</label>
+          <select id="edit-user-role" class="search-input-purple" style="width: 100%; background: #131124; color: #fff;">
+            <option value="SECURITY">Security – เจ้าหน้าที่รักษาความปลอดภัย</option>
+            <option value="STUDENT">Student – นักศึกษา</option>
+            <option value="TEACHER">Teacher – อาจารย์</option>
+            <option value="ADMIN">Admin – ผู้ดูแลระบบ</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="color: var(--text-gray);">เพศ:</label>
+            <select id="edit-user-gender" class="search-input-purple" style="width: 100%; background: #131124; color: #fff;">
+              <option value="">ยังไม่ได้ระบุ</option>
+              <option value="ชาย">ชาย</option>
+              <option value="หญิง">หญิง</option>
+            </select>
+          </div>
+          <div>
+            <label style="color: var(--text-gray);">อายุ:</label>
+            <input type="number" id="edit-user-age" class="search-input-purple" placeholder="เว้นว่างหากไม่ระบุ">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="color: var(--text-gray);">วันเกิด:</label>
+            <input type="text" id="edit-user-birthdate" class="search-input-purple" placeholder="เช่น 15 มีนาคม 2548">
+          </div>
+          <div>
+            <label style="color: var(--text-gray);">เบอร์ติดต่อ:</label>
+            <input type="text" id="edit-user-phone" class="search-input-purple" placeholder="เช่น 081-234-5678">
+          </div>
+        </div>
+        <div>
+          <label style="color: var(--text-gray);">ตั้ง/รีเซ็ตรหัสผ่าน (Password Hash PBKDF2):</label>
+          <input type="password" id="edit-user-password" class="search-input-purple" placeholder="กรอกเมื่อเพิ่มใหม่ หรือต้องการรีเซ็ตรหัสผ่าน">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button onclick="closeUserEditModal()" class="btn-gate-action btn-gate-close" style="flex: initial; padding: 6px 14px;">ยกเลิก</button>
+        <button onclick="saveUserRecord()" class="btn-gate-action btn-gate-open" style="flex: initial; padding: 6px 18px;">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 4: SLOT CREATE / EDIT MODAL (ADMIN & SECURITY)     -->
+  <!-- ======================================================== -->
+  <div id="slot-edit-modal" class="app-modal">
+    <div class="app-modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="color:#fff; font-size:16px;" id="slot-modal-title">จัดการช่องจอดรถ</h3>
+        <button onclick="closeSlotEditModal()" style="background:none; border:none; color:var(--text-gray); font-size:20px; cursor:pointer;">&times;</button>
+      </div>
+      <input type="hidden" id="edit-slot-id" value="">
+      <div style="display: flex; flex-direction: column; gap: 9px; font-size: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="color: var(--text-gray);">ชั้นจอด (Floor):</label>
+            <select id="edit-slot-floor" class="search-input-purple" style="width:100%; background:#131124; color:#fff;">
+              <option value="1">ชั้น 1</option>
+              <option value="2">ชั้น 2</option>
+              <option value="3">ชั้น 3</option>
+              <option value="4">ชั้น 4</option>
+              <option value="5">ชั้น 5</option>
+            </select>
+          </div>
+          <div>
+            <label style="color: var(--text-gray);">โซน (Zone):</label>
+            <input type="text" id="edit-slot-zone" class="search-input-purple" value="A">
+          </div>
+          <div>
+            <label style="color: var(--text-gray);">รหัสช่องจอด:</label>
+            <input type="text" id="edit-slot-number" class="search-input-purple" placeholder="เช่น A-03">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="color: var(--text-gray);">ประเภทช่องจอด:</label>
+            <select id="edit-slot-type" class="search-input-purple" style="width:100%; background:#131124; color:#fff;">
+              <option value="REGULAR">REGULAR (ทั่วไป)</option>
+              <option value="VIP">VIP / ผู้บริหาร</option>
+              <option value="EV">EV Charging</option>
+              <option value="DISABLED">ผู้พิการ</option>
+            </select>
+          </div>
+          <div>
+            <label style="color: var(--text-gray);">สถานะช่องจอด:</label>
+            <select id="edit-slot-status" class="search-input-purple" style="width:100%; background:#131124; color:#fff;">
+              <option value="AVAILABLE">AVAILABLE (ว่าง)</option>
+              <option value="OCCUPIED">OCCUPIED (มีรถจอด)</option>
+              <option value="RESERVED">RESERVED (จอง)</option>
+              <option value="CONFLICT">CONFLICT (ข้อมูลขัดแย้ง)</option>
+              <option value="UNKNOWN">UNKNOWN (ไม่ทราบแน่ชัด)</option>
+              <option value="ERROR">ERROR (เซนเซอร์ขัดข้อง)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="color: var(--text-gray);">ทะเบียนรถที่จอดอยู่ (เมื่อสถานะเป็น OCCUPIED):</label>
+          <input type="text" id="edit-slot-vehicle" class="search-input-purple" placeholder="เช่น กบ 1234 (ตรวจสอบห้ามซ้ำช่องอื่นอัตโนมัติ)">
+        </div>
+        <div>
+          <label style="color: var(--text-gray);">เหตุผลในการแก้ไข (บันทึก Audit Log):</label>
+          <input type="text" id="edit-slot-reason" class="search-input-purple" placeholder="เช่น ยืนยันตำแหน่งรถจากกล้องวงจรปิด">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button onclick="closeSlotEditModal()" class="btn-gate-action btn-gate-close" style="flex: initial; padding: 6px 14px;">ยกเลิก</button>
+        <button onclick="saveSlotRecord()" class="btn-gate-action btn-gate-open" style="flex: initial; padding: 6px 18px;">บันทึกช่องจอด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 5: GOOGLE APPS SCRIPT CODE.GS VIEWER & COPY        -->
+  <!-- ======================================================== -->
+  <div id="apps-script-modal" class="app-modal">
+    <div class="app-modal-content app-modal-wide">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="color:#fff; font-size:16px;">
+          <i class="fa-solid fa-code" style="color: #4ADE80;"></i> โค้ดสำหรับ Google Apps Script (<code>google_apps_script/Code.gs</code>)
+        </h3>
+        <button onclick="document.getElementById('apps-script-modal').style.display='none'" style="background:none; border:none; color:var(--text-gray); font-size:20px; cursor:pointer;">&times;</button>
+      </div>
+      <p style="font-size: 11.5px; color: var(--text-gray); margin-bottom: 10px;">
+        1. เปิดไฟล์ Google Sheets ของคุณ -> คลิกเมนู <strong>ส่วนขยาย (Extensions) &gt; Apps Script</strong><br>
+        2. กดปุ่ม <strong>คัดลอกโค้ดทั้งหมด</strong> ด้านล่างไปวางแทนที่ แล้วกด <strong>Deploy &gt; New deployment &gt; Web app (Execute as: Me, Who has access: Anyone)</strong><br>
+        3. นำลิงก์ Web App URL (ลงท้ายด้วย <code>/exec</code>) กลับมาวางในช่องตั้งค่าแล้วกดซิงก์ได้ทันที!
+      </p>
+      <textarea id="code-gs-textarea" readonly class="search-input-purple" style="width: 100%; height: 320px; font-family: monospace; font-size: 11.5px; line-height: 1.45;"></textarea>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
+        <button onclick="copyAppsScriptCode()" class="btn-gate-action btn-gate-open" style="flex: initial; padding: 7px 18px;">
+          <i class="fa-regular fa-copy"></i> คัดลอกโค้ด Code.gs ทั้งหมด
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // AUTHENTICATED SESSION & API HELPER
+    // =========================================================================
+    let currentUser = null;
+    let activeConversationId = null;
+
+    function getAuthToken() {
+      return localStorage.getItem('pink_token');
+    }
+
+    async function apiFetch(url, options = {}) {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.replace('/login');
+        throw new Error('Not authenticated');
+      }
+      const res = await PINKApiClient.request(url, options);
+      if (res.status === 401) {
+        localStorage.removeItem('pink_token');
+        localStorage.removeItem('pink_user');
+        window.location.replace('/login');
+        throw new Error('Session expired');
+      }
+      const badge = document.getElementById('system-source-badge');
+      if (badge && res.ok) {
+        badge.textContent = 'API • LIVE';
+        badge.style.color = '#86EFAC';
+        badge.style.borderColor = 'rgba(74,222,128,.45)';
+        badge.style.background = 'rgba(74,222,128,.12)';
+      }
+      return res;
+    }
+
+    const dispVal = (v) => (v !== null && v !== undefined && String(v).trim() !== '') ? v : 'ยังไม่ได้ระบุ';
+
+    let studentPageContent = null;
+    function arrangeStudentPages(activePage = 'home') {
+      const page = document.getElementById(`student-page-${activePage}`);
+      if (!page) return;
+      if (!studentPageContent) studentPageContent = {
+        calendar: document.querySelector('.student-content-calendar'),
+        car: document.querySelector('.student-content-car'),
+        home: document.querySelector('.student-content-home'),
+        history: document.querySelector('.student-content-history')
+      };
+      const contentBySelector = studentPageContent;
+      Object.values(contentBySelector).forEach(content => content?.remove());
+      const pageContents = activePage === 'home'
+        ? [contentBySelector.calendar, contentBySelector.car, contentBySelector.home]
+        : activePage === 'calendar' ? [contentBySelector.calendar]
+          : activePage === 'car' ? [contentBySelector.car]
+            : activePage === 'history' ? [contentBySelector.history] : [];
+      pageContents.forEach(content => { if (content) page.appendChild(content); });
+    }
+
+    function toggleVehicleForm(open) {
+      const form = document.getElementById('vehicle-entry-form');
+      if (!form) return;
+      form.classList.toggle('open', Boolean(open));
+      if (open) document.getElementById('own-vehicle-plate').focus();
+      else { form.reset(); document.getElementById('own-vehicle-feedback').textContent = ''; }
+    }
+
+    async function addOwnVehicle(event) {
+      event?.preventDefault();
+      const plate_no = document.getElementById('own-vehicle-plate').value.trim();
+      const province = document.getElementById('own-vehicle-province').value.trim();
+      const feedback = document.getElementById('own-vehicle-feedback');
+      const submit = document.getElementById('own-vehicle-submit');
+      if (!plate_no || !province) { feedback.textContent = 'กรุณากรอกทะเบียนและจังหวัดให้ครบ'; feedback.style.color = '#FCA5A5'; return; }
+      submit.disabled = true; feedback.textContent = 'กำลังบันทึกทะเบียน…'; feedback.style.color = 'var(--text-gray)';
+      try {
+        const res = await apiFetch('/api/parking/my/vehicles', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate_no,province})});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'เพิ่มทะเบียนไม่สำเร็จ');
+        feedback.textContent = 'บันทึกแล้ว รายการกำลังรอผู้ดูแลอนุมัติ'; feedback.style.color = '#86EFAC';
+        document.getElementById('own-vehicle-plate').value = ''; document.getElementById('own-vehicle-province').value = '';
+        await syncLiveParkingData();
+      } catch (error) { feedback.textContent = error.message || 'เชื่อมต่อไม่สำเร็จ กรุณาลองอีกครั้ง'; feedback.style.color = '#FCA5A5'; }
+      finally { submit.disabled = false; }
+    }
+
+    // =========================================================================
+    // 1. BOOTSTRAP: VERIFY ROLE FROM BACKEND BEFORE SHOWING DASHBOARD
+    // =========================================================================
+    async function bootAuthenticatedSession() {
+      try {
+        const res = await apiFetch('/api/auth/me');
+        if (!res.ok) {
+          localStorage.removeItem('pink_token');
+          localStorage.removeItem('pink_user');
+          window.location.replace('/login');
+          return;
+        }
+        const data = await res.json();
+        currentUser = data.user;
+        localStorage.setItem('pink_user', JSON.stringify(currentUser));
+
+        applyRolePermissionsAndUI();
+        document.body.classList.remove('auth-verifying');
+
+        loadLiveWeather();
+        syncLiveParkingData();
+      } catch (err) {
+        console.error('Auth verification failed:', err);
+      }
+    }
+
+    // =========================================================================
+    // 2. STRICT ROLE-BASED MENU & VIEW ISOLATION (Requirements 1 & 7)
+    // =========================================================================
+    function applyRolePermissionsAndUI() {
+      if (!currentUser) return;
+      const role = currentUser.role_code; // 'SECURITY', 'STUDENT', 'TEACHER', 'ADMIN'
+
+      document.getElementById('greeting-user-name').textContent = `${currentUser.name}`;
+
+      const badge = document.getElementById('verified-role-badge');
+      const motto = document.getElementById('greeting-motto-text');
+      const adminBar = document.getElementById('admin-only-switcher');
+
+      // Show/Hide Left & Bottom Dock Menus strictly per Role
+      const setEl = (id, show) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = show ? '' : 'none';
+      };
+
+      if (role === 'STUDENT') {
+        badge.innerHTML = '<i class="fa-solid fa-graduation-cap"></i> Student • นักศึกษา';
+        motto.textContent = `รหัสนักศึกษา ${currentUser.username} • ตารางเรียน • สถานะรถของฉัน • แชทติดต่อ รปภ.`;
+        adminBar.style.display = 'none';
+        setEl('dock-btn-car', true);
+        setEl('dock-btn-cctv', false);
+        setEl('dock-btn-ai', false);
+        setEl('dock-btn-gate', false);
+        setEl('dock-btn-settings', false);
+        setEl('bdock-car', true);
+        setEl('bdock-cctv', false);
+        arrangeStudentPages();
+        showSingleView('view-student');
+        showStudentPage('home');
+        document.getElementById('sched-card-title').textContent = "ตารางเรียนของฉัน (Student Schedule)";
+        document.getElementById('sched-dept-label').textContent = dispVal(currentUser.department);
+        document.getElementById('student-pass-code').textContent = `PASS-${currentUser.username}`;
+        document.getElementById('student-pass-role').textContent = 'บัตรผ่านนักศึกษา';
+        loadTodaySchedule();
+      } else if (role === 'TEACHER') {
+        badge.innerHTML = '<i class="fa-solid fa-chalkboard-user"></i> Teacher • อาจารย์';
+        motto.textContent = `รหัสอาจารย์ ${currentUser.username} • ตารางสอน • สถานะรถของฉัน • แชทติดต่อ รปภ.`;
+        adminBar.style.display = 'none';
+        setEl('dock-btn-car', true);
+        setEl('dock-btn-cctv', false);
+        setEl('dock-btn-ai', false);
+        setEl('dock-btn-gate', false);
+        setEl('dock-btn-settings', false);
+        setEl('bdock-car', true);
+        setEl('bdock-cctv', false);
+        arrangeStudentPages();
+        showSingleView('view-student');
+        showStudentPage('home');
+        document.getElementById('sched-card-title').textContent = "ตารางสอนอาจารย์ (Teacher Schedule)";
+        document.getElementById('sched-dept-label').textContent = dispVal(currentUser.department);
+        document.getElementById('student-pass-code').textContent = `PASS-${currentUser.username}`;
+        document.getElementById('student-pass-role').textContent = 'บัตรผ่านอาจารย์';
+        loadTodaySchedule();
+      } else if (role === 'SECURITY') {
+        badge.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Security • เจ้าหน้าที่ รปภ.';
+        motto.textContent = `รหัสเจ้าหน้าที่ ${currentUser.username} • ควบคุมไม้กั้น • กล้อง LPR 5 จุด • ตรวจสอบช่องจอด & แชท`;
+        adminBar.style.display = 'none';
+        setEl('dock-btn-car', true);
+        setEl('dock-btn-cctv', true);
+        setEl('dock-btn-ai', true);
+        setEl('dock-btn-gate', true);
+        setEl('dock-btn-settings', false);
+        setEl('bdock-car', true);
+        setEl('bdock-cctv', true);
+        showSingleView('view-security');
+        loadAiReviewQueue();
+      } else if (role === 'ADMIN') {
+        badge.innerHTML = '<i class="fa-solid fa-user-gear"></i> Admin • ผู้ดูแลระบบสูงสุด';
+        motto.textContent = `รหัสผู้ดูแล ${currentUser.username} • จัดการผู้ใช้ทุก Role • ช่องจอด • Google Sheets & Audit Logs`;
+        document.getElementById('admin-console-link').style.display = 'inline-flex';
+        adminBar.style.display = 'inline-flex';
+        setEl('dock-btn-car', true);
+        setEl('dock-btn-cctv', true);
+        setEl('dock-btn-ai', true);
+        setEl('dock-btn-gate', true);
+        setEl('dock-btn-settings', true);
+        setEl('bdock-car', true);
+        setEl('bdock-cctv', true);
+        showSingleView('view-admin');
+        loadAdminUsers();
+        loadSheetsStatus();
+      }
+    }
+
+    function showSingleView(viewId) {
+      document.querySelectorAll('.role-view-section').forEach(s => s.classList.remove('active-view'));
+      const target = document.getElementById(viewId);
+      if (target) target.classList.add('active-view');
+    }
+
+    // Admin-only view switcher (strictly guarded by currentUser.role_code === 'ADMIN')
+    function adminPreviewSection(mode) {
+      if (!currentUser || currentUser.role_code !== 'ADMIN') return;
+      document.querySelectorAll('#admin-only-switcher .role-pill-btn').forEach(b => b.classList.remove('active'));
+      if (mode === 'ADMIN') {
+        document.getElementById('pill-view-admin').classList.add('active');
+        showSingleView('view-admin');
+        loadAdminUsers();
+      } else if (mode === 'SECURITY') {
+        document.getElementById('pill-view-security').classList.add('active');
+        showSingleView('view-security');
+        loadAiReviewQueue();
+      } else if (mode === 'STUDENT') {
+        document.getElementById('pill-view-student').classList.add('active');
+        showSingleView('view-student');
+        loadTodaySchedule();
+      }
+    }
+
+    function navToSection(sec) {
+      if (!currentUser) return;
+      const role = currentUser.role_code;
+
+      // Block unauthorized navigation attempts
+      if ((sec === 'cctv' || sec === 'gate' || sec === 'ai') && !['SECURITY', 'ADMIN'].includes(role)) {
+        alert('คุณไม่มีสิทธิ์เข้าถึงเมนูสำหรับเจ้าหน้าที่รักษาความปลอดภัย');
+        return;
+      }
+      if (sec === 'settings' && role !== 'ADMIN') {
+        alert('คุณไม่มีสิทธิ์เข้าถึงส่วนจัดการระบบของผู้ดูแลระบบ (Admin Only)');
+        return;
+      }
+
+      document.querySelectorAll('.left-dock .dock-btn').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById(`dock-btn-${sec}`);
+      if (btn) btn.classList.add('active');
+
+      if (sec === 'msg') { openChatCenterModal(); return; }
+
+      if (['STUDENT', 'TEACHER'].includes(role)) {
+        const targetPage = {home:'home', calendar:'calendar', car:'car', history:'history'}[sec];
+        if (targetPage) {
+          showSingleView('view-student');
+          showStudentPage(targetPage);
+          return;
+        }
+      }
+
+      if (sec === 'home') {
+        if (role === 'ADMIN') adminPreviewSection('ADMIN');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (sec === 'car') {
+        if (role === 'SECURITY') {
+          openSecuritySlotsModal();
+        } else if (role === 'ADMIN') {
+          adminPreviewSection('ADMIN');
+          switchAdminTab('slots');
+        } else {
+          document.getElementById('section-student-car')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else if (sec === 'cctv') {
+        if (role === 'ADMIN') adminPreviewSection('SECURITY');
+        document.getElementById('section-sec-cctv')?.scrollIntoView({ behavior: 'smooth' });
+      } else if (sec === 'gate') {
+        if (role === 'ADMIN') adminPreviewSection('SECURITY');
+        document.getElementById('section-sec-gate')?.scrollIntoView({ behavior: 'smooth' });
+      } else if (sec === 'ai') {
+        if (role === 'ADMIN') adminPreviewSection('SECURITY');
+        loadAiReviewQueue();
+        document.getElementById('section-sec-ai-review')?.scrollIntoView({ behavior: 'smooth' });
+      } else if (sec === 'history') {
+        if (role === 'SECURITY') {
+          document.getElementById('section-sec-history')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (role === 'ADMIN') {
+          adminPreviewSection('ADMIN');
+          switchAdminTab('audit');
+        } else {
+          document.getElementById('section-student-history')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else if (sec === 'settings' && role === 'ADMIN') {
+        adminPreviewSection('ADMIN');
+      }
+    }
+
+    function showStudentPage(page) {
+      arrangeStudentPages(page);
+      document.querySelectorAll('#view-student .student-page-section').forEach(el => el.classList.remove('active-student-page'));
+      document.getElementById(`student-page-${page}`)?.classList.add('active-student-page');
+      document.querySelectorAll('.left-dock .dock-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(`dock-btn-${page === 'home' ? 'home' : page}`)?.classList.add('active');
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    // =========================================================================
+    // 3. LOGOUT WITH REAL BACKEND SESSION LOGGING (Sheet 5 Logout Time)
+    // =========================================================================
+    async function handleLogout() {
+      try {
+        await apiFetch('/api/auth/logout', { method: 'POST' });
+      } catch (e) {}
+      localStorage.removeItem('pink_token');
+      localStorage.removeItem('pink_user');
+      window.location.replace('/login');
+    }
+
+    // =========================================================================
+    // 4. PERSONAL INFORMATION MODAL (Requirement 4)
+    // =========================================================================
+    async function openProfileModal() {
+      try {
+        const res = await apiFetch('/api/auth/profile');
+        if (res.ok) {
+          const data = await res.json();
+          const p = data.profile;
+          document.getElementById('prof-code').textContent = dispVal(p.username);
+          document.getElementById('prof-name').textContent = dispVal(p.name);
+          document.getElementById('prof-role').textContent = `${p.role_code} (${dispVal(p.role_name)})`;
+          document.getElementById('prof-gender').textContent = dispVal(p.gender);
+          document.getElementById('prof-age').textContent = (p.age !== 'ยังไม่ได้ระบุ' && p.age !== null) ? `${p.age} ปี` : 'ยังไม่ได้ระบุ';
+          document.getElementById('prof-birth').textContent = dispVal(p.birthdate);
+          document.getElementById('prof-phone').textContent = dispVal(p.phone);
+          document.getElementById('prof-veh').textContent = dispVal(p.vehicle_plate);
+          document.getElementById('prof-last-login').textContent = dispVal(p.last_login_at);
+          document.getElementById('profile-modal').style.display = 'flex';
+        }
+      } catch (e) {}
+    }
+    function closeProfileModal() {
+      document.getElementById('profile-modal').style.display = 'none';
+    }
+
+    // =========================================================================
+    // 5. REAL-TIME CLOCK & CALENDAR (Asia/Bangkok UTC+7, Dynamic B.E./C.E.)
+    // =========================================================================
+    function getBangkokNow() {
+      return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    }
+
+    function updateLiveClock() {
+      const bkk = getBangkokNow();
+      const h = bkk.getHours();
+      const m = String(bkk.getMinutes()).padStart(2, '0');
+      const s = String(bkk.getSeconds()).padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+
+      document.getElementById('live-time').textContent = `${String(h12).padStart(2, '0')}:${m}:${s}`;
+      document.getElementById('live-ampm').textContent = ampm;
+
+      const prefixEl = document.getElementById('greeting-title-prefix');
+      if (prefixEl) {
+        prefixEl.textContent = h < 12 ? 'Good Morning,' : (h < 18 ? 'Good Afternoon,' : 'Good Evening,');
+      }
+
+      const thaiDays = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+      const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      const engMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const beYear = bkk.getFullYear() + 543;
+
+      document.getElementById('live-date').textContent =
+        `${thaiDays[bkk.getDay()]}ที่ ${bkk.getDate()} ${thaiMonths[bkk.getMonth()]} พ.ศ. ${beYear} • ${engMonths[bkk.getMonth()]} ${bkk.getDate()}, ${bkk.getFullYear()}`;
+
+      const dockDay = document.getElementById('dock-cal-day');
+      const dockMonth = document.getElementById('dock-cal-month');
+      if (dockDay) dockDay.textContent = bkk.getDate();
+      if (dockMonth) dockMonth.textContent = engMonths[bkk.getMonth()].toUpperCase();
+    }
+    setInterval(updateLiveClock, 1000);
+    updateLiveClock();
+
+    let currentCalDate = getBangkokNow();
+    let selectedCalDayName = null;
+
+    function renderCalendar() {
+      const container = document.getElementById('cal-grid-container');
+      if (!container) return;
+      const year = currentCalDate.getFullYear();
+      const month = currentCalDate.getMonth();
+      const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      document.getElementById('cal-month-title').textContent = `${thaiMonths[month]} ${year + 543}`;
+
+      let html = ['S','M','T','W','T','F','S'].map(d => `<div class="cal-day-label">${d}</div>`).join('');
+      const firstDay = new Date(year, month, 1).getDay();
+      const totalDays = new Date(year, month + 1, 0).getDate();
+      const prevTotal = new Date(year, month, 0).getDate();
+
+      for (let i = firstDay; i > 0; i--) {
+        html += `<div class="cal-date muted">${prevTotal - i + 1}</div>`;
+      }
+      const today = getBangkokNow();
+      for (let d = 1; d <= totalDays; d++) {
+        const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+        html += `<div class="cal-date ${isToday ? 'active-today' : ''}" style="cursor:pointer;" onclick="selectCalendarDate(${year},${month},${d})">${d}</div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    function navMonth(delta) {
+      currentCalDate.setMonth(currentCalDate.getMonth() + delta);
+      renderCalendar();
+    }
+
+    function selectCalendarDate(y, m, d) {
+      const picked = new Date(y, m, d);
+      const daysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      selectedCalDayName = daysEn[picked.getDay()];
+      loadTodaySchedule(selectedCalDayName);
+    }
+    renderCalendar();
+
+    // =========================================================================
+    // 6. SCHEDULE & REAL WEATHER WIDGET
+    // =========================================================================
+    async function loadTodaySchedule(dayOverride = null) {
+      const listEl = document.getElementById('schedule-list-items');
+      if (!listEl) return;
+      try {
+        const q = dayOverride ? `?day=${encodeURIComponent(dayOverride)}` : '';
+        const res = await apiFetch(`/api/parking/schedule/today${q}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const sched = data.schedule || [];
+        if (sched.length === 0) {
+          listEl.innerHTML = `<div style="font-size:12px; color:var(--text-gray); padding:12px 0;">ไม่มีรายการตารางในระบบ</div>`;
+          return;
+        }
+        const dots = ['dot-purple', 'dot-blue', 'dot-orange', 'dot-green'];
+        listEl.innerHTML = sched.map((s, idx) => `
+          <div class="schedule-item">
+            <div class="sched-time">${s.start_time}<br>${s.end_time}</div>
+            <div class="sched-dot ${dots[idx % dots.length]}"></div>
+            <div class="sched-details">
+              <div class="sched-title">${s.course_code ? s.course_code + ' • ' : ''}${s.course_name}</div>
+              <div class="sched-desc">${s.day_of_week} • ${dispVal(s.room)} (${dispVal(s.building)})</div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    async function loadLiveWeather() {
+      try {
+        const res = await apiFetch('/api/weather/current');
+        if (!res.ok) return;
+        const data = await res.json();
+        const w = data.weather;
+        if (!w) return;
+
+        if (w.status === 'OFFLINE') {
+          document.getElementById('live-weather-temp').textContent = '--°';
+          document.getElementById('live-weather-condition').textContent = 'Weather Unavailable (Not Connected)';
+          document.getElementById('live-weather-updated').textContent = 'สถานะ: Not Connected';
+          return;
+        }
+
+        document.getElementById('live-weather-temp').textContent = `${Math.round(w.temperature)}°`;
+        document.getElementById('live-weather-condition').textContent = `${w.weather_desc}`;
+        document.getElementById('live-weather-max').textContent = `↑ ${w.today_max}°`;
+        document.getElementById('live-weather-min').textContent = `↓ ${w.today_min}°`;
+        document.getElementById('live-weather-humidity').textContent = `ชื้น ${w.humidity}%`;
+        document.getElementById('live-weather-wind').textContent = `ลม ${w.wind_speed} km/h`;
+        document.getElementById('live-weather-rain').textContent = `โอกาสฝน ${w.rain_probability ?? 0}%`;
+        document.getElementById('live-weather-updated').textContent =
+          `อัปเดตล่าสุด: ${w.updated_at}${w.is_cached ? ' (Cached)' : ''}`;
+
+        if (w.weather_icon) {
+          document.getElementById('weather-icon-container').innerHTML =
+            `<i class="fa-solid ${w.weather_icon}" style="font-size: 36px; color: ${w.weather_color || '#F59E0B'};"></i>`;
+        }
+        if (w.forecast && w.forecast.length > 0) {
+          document.getElementById('live-weather-forecast').innerHTML = w.forecast.slice(0, 3).map(f => `
+            <div class="forecast-col">
+              <span>${f.day_label}</span>
+              <i class="fa-solid ${f.icon || 'fa-cloud-sun'}" style="font-size: 13px; color: #F59E0B; margin: 2px 0;"></i>
+              <span>${f.max_temp}°/${f.min_temp}°</span>
+            </div>
+          `).join('');
+        }
+      } catch (e) {}
+    }
+
+    window.addEventListener('pink-api-state', (event) => {
+      const badge = document.getElementById('system-source-badge');
+      if (!badge) return;
+      const state = event.detail?.state || 'ERROR';
+      const styles = {
+        LIVE: ['API • LIVE', '#86EFAC', 'rgba(74,222,128,.45)', 'rgba(74,222,128,.12)'],
+        ERROR: ['API • ERROR', '#FCA5A5', 'rgba(248,113,113,.45)', 'rgba(248,113,113,.12)'],
+        OFFLINE: ['API • OFFLINE', '#FCA5A5', 'rgba(248,113,113,.45)', 'rgba(248,113,113,.12)']
+      }[state] || ['API • STALE', '#FDE68A', 'rgba(251,191,36,.45)', 'rgba(251,191,36,.12)'];
+      badge.textContent = styles[0];
+      badge.style.color = styles[1];
+      badge.style.borderColor = styles[2];
+      badge.style.background = styles[3];
+      if (state !== 'LIVE') updateGateStateChips('สถานะคำสั่งไม่สด', 'UNKNOWN', 'UNKNOWN', 'UNCONFIRMED');
+    });
+
+    setInterval(() => {
+      const lastSuccessAt = PINKApiClient.lastSuccessAt;
+      if (lastSuccessAt && Date.now() - lastSuccessAt > 12000) {
+        window.dispatchEvent(new CustomEvent('pink-api-state', { detail: { state: 'STALE' } }));
+      }
+    }, 3000);
+
+    // =========================================================================
+    // 7. PERSISTENT 2-WAY CHAT SYSTEM (SQLite Database Backed)
+    // =========================================================================
+    async function openChatCenterModal() {
+      document.getElementById('chat-center-modal').style.display = 'flex';
+      const isGuard = ['SECURITY', 'ADMIN'].includes(currentUser.role_code);
+      document.getElementById('chat-reply-plate').style.display = isGuard && !activeConversationId ? 'block' : 'none';
+      await loadChatConversations();
+    }
+
+    function closeChatCenterModal() {
+      document.getElementById('chat-center-modal').style.display = 'none';
+    }
+
+    async function loadChatConversations() {
+      const q = document.getElementById('chat-search-input').value.trim();
+      const url = q ? `/api/messages/conversations?search=${encodeURIComponent(q)}` : '/api/messages/conversations';
+      const res = await apiFetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      const convs = data.conversations || [];
+      const listEl = document.getElementById('chat-conv-list');
+      const isGuard = ['SECURITY', 'ADMIN'].includes(currentUser.role_code);
+
+      if (convs.length === 0) {
+        listEl.innerHTML = `<button class="chat-conv-item active" type="button" onclick="selectSecurityContact()" style="width:100%;text-align:left;color:#fff;background:rgba(255,77,155,.12);border:1px solid rgba(255,77,155,.28);cursor:pointer;"><strong><i class="fa-solid fa-user-shield" style="color:#FF8ABC;margin-right:7px;"></i>ศูนย์ รปภ.</strong><div style="font-size:11px;color:var(--text-gray);margin-top:5px;">เริ่มการสนทนากับเจ้าหน้าที่รักษาความปลอดภัย</div></button>`;
+        activeConversationId = null;
+        document.getElementById('chat-reply-plate').style.display = isGuard ? 'block' : 'none';
+        selectSecurityContact();
+        return;
+      }
+
+      listEl.innerHTML = convs.map(c => {
+        const title = isGuard ? `${c.customer_name} (${c.related_plate || c.customer_code})` : `ศูนย์ รปภ. (${c.related_plate || 'ติดต่อทั่วไป'})`;
+        const unread = c.unread_count > 0 ? `<span style="background:#EF4444; color:#fff; font-size:10px; padding:1px 6px; border-radius:999px;">${c.unread_count} ใหม่</span>` : `<span style="font-size:10px; color:#4ADE80;">อ่านแล้ว</span>`;
+        return `
+          <div class="chat-conv-item ${activeConversationId === c.id ? 'active' : ''}" onclick="selectConversation(${c.id})">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:12px; color:#fff;">${title}</strong>
+              ${unread}
+            </div>
+            <div style="font-size:11px; color:var(--text-gray); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${c.last_message || '-'}
+            </div>
+            <div style="font-size:9.5px; color:#94A3B8; margin-top:2px;">${c.last_message_time || ''}</div>
+          </div>
+        `;
+      }).join('');
+
+      if (!activeConversationId && convs.length > 0) {
+        await selectConversation(convs[0].id);
+      } else if (activeConversationId) {
+        await selectConversation(activeConversationId);
+      }
+    }
+
+    async function selectConversation(convId) {
+      activeConversationId = convId;
+      document.getElementById('chat-reply-plate').style.display = 'none';
+      const res = await apiFetch(`/api/messages/conversation/${convId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || 'ไม่มีสิทธิ์เปิดบทสนทนานี้');
+        return;
+      }
+      const data = await res.json();
+      const conv = data.conversation;
+      const msgs = data.messages || [];
+
+      document.getElementById('chat-thread-header').innerHTML =
+        `บทสนทนา #${conv.id}: <span style="color:#fff;">${conv.customer_name} (${conv.customer_role})</span> • ทะเบียน: <span style="color:#4ADE80;">${conv.related_plate || 'ไม่ระบุ'}</span>`;
+
+      const box = document.getElementById('chat-messages-box');
+      box.innerHTML = msgs.map(m => {
+        const mine = m.sender_id === currentUser.id;
+        const readText = m.is_read ? 'อ่านแล้ว' : 'ยังไม่อ่าน';
+        return `
+          <div class="${mine ? 'chat-msg-mine' : 'chat-msg-theirs'}">
+            <div style="font-size:10.5px; color:#FFC0D9; font-weight:700;">
+              ${m.sender_name} (${m.sender_role})
+            </div>
+            <div style="font-size:12.5px; color:#fff; margin-top:2px;">${m.content}</div>
+            <div style="font-size:9.5px; color:#94A3B8; margin-top:3px; text-align:right;">
+              ${m.created_at} • ${readText}
+            </div>
+          </div>
+        `;
+      }).join('');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function selectSecurityContact() {
+      activeConversationId = null;
+      document.getElementById('chat-thread-header').innerHTML = '<i class="fa-solid fa-user-shield" style="color:#FF4D9B;margin-right:6px;"></i> ศูนย์เจ้าหน้าที่รักษาความปลอดภัย';
+      document.getElementById('chat-messages-box').innerHTML = '<div style="font-size:13px;color:var(--text-gray);text-align:center;margin:auto;padding:24px;">พิมพ์ข้อความด้านล่างเพื่อเริ่มแชทกับ รปภ. ข้อความจะถูกบันทึกเมื่อส่ง</div>';
+      document.getElementById('chat-reply-input').focus();
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chat-reply-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        let res;
+        if (activeConversationId) {
+          res = await apiFetch('/api/messages/send', {
+            method: 'POST',
+            body: JSON.stringify({ conversation_id: activeConversationId, content: text })
+          });
+        } else {
+          const plateInput = document.getElementById('chat-reply-plate').value.trim();
+          res = await apiFetch('/api/messages/create', {
+            method: 'POST',
+            body: JSON.stringify({
+              subject: `ข้อความจาก ${currentUser.name}`,
+              related_plate: plateInput || currentUser.vehicle_plate || null,
+              initial_message: text
+            })
+          });
+        }
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.detail || 'ไม่สามารถบันทึกข้อความได้');
+          return;
+        }
+        input.value = '';
+        if (data.result && data.result.conversation_id) {
+          activeConversationId = data.result.conversation_id;
+        }
+        await loadChatConversations();
+        syncLiveParkingData();
+      } catch (err) {
+        alert('การเชื่อมต่อขัดข้อง ระบบยังไม่ได้บันทึกข้อความ กรุณาลองใหม่');
+      }
+    }
+
+    // Security quick dispatch on Security Dashboard
+    function quickFillSecAlert(msg) {
+      document.getElementById('sec-msg-content').value = msg;
+    }
+
+    async function handleSecuritySendMessage() {
+      const plate = document.getElementById('sec-msg-target-plate').value.trim();
+      const content = document.getElementById('sec-msg-content').value.trim();
+      if (!plate || !content) {
+        alert('กรุณาระบุเลขทะเบียนรถและข้อความที่จะส่ง');
+        return;
+      }
+      try {
+        const res = await apiFetch('/api/messages/create', {
+          method: 'POST',
+          body: JSON.stringify({
+            subject: `แจ้งเตือนจาก รปภ. (${plate})`,
+            related_plate: plate,
+            initial_message: content
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.detail || 'ไม่พบข้อมูลเจ้าของรถ ไม่สามารถส่งข้อความได้');
+          return;
+        }
+        document.getElementById('sec-msg-content').value = '';
+        alert(`บันทึกและส่งข้อความไปยังเจ้าของรถทะเบียน ${plate} สำเร็จ!`);
+      } catch (e) {
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ ระบบยังไม่ได้บันทึกข้อความ');
+      }
+    }
+
+    // =========================================================================
+    // 8. SECURITY CONTROLS (Gate, Plate Search, CCTV, Slot Verification)
+    // =========================================================================
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+
+    async function loadAiReviewQueue() {
+      const list = document.getElementById('ai-review-queue');
+      const state = document.getElementById('ai-review-source-state');
+      if (!list || !currentUser || !['SECURITY', 'ADMIN'].includes(currentUser.role_code)) return;
+      if (state) state.textContent = 'กำลังโหลดข้อมูลจาก API…';
+      try {
+        const res = await apiFetch('/api/ai/events?limit=50');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'โหลดคิวตรวจสอบไม่สำเร็จ');
+        const pending = (data.events || []).filter(event => event.status === 'PENDING');
+        if (state) state.textContent = `LIVE • ${pending.length} รายการรอตรวจ`;
+        if (!pending.length) {
+          list.innerHTML = '<div style="color:var(--text-gray); padding:12px; border:1px dashed rgba(255,255,255,.12); border-radius:10px;">ไม่มีรายการรอตรวจสอบ</div>';
+          return;
+        }
+        list.innerHTML = pending.map(event => {
+          const confidence = event.confidence_score === null || event.confidence_score === undefined
+            ? 'ไม่มีค่า confidence จากต้นทาง'
+            : `ความมั่นใจ ${(Number(event.confidence_score) * 100).toFixed(1)}%`;
+          const floorText = event.suggested_floor ? `ทราบชั้น ${escapeHtml(event.suggested_floor)} • ช่องจอดยังไม่ทราบ` : 'ยังไม่ทราบชั้น/ช่องจอด';
+          const plate = event.raw_plate || event.clean_plate || 'ไม่พบทะเบียน';
+          const vehicleState = event.vehicle_active === 1 ? 'ทะเบียนมีสถานะใช้งาน' : (event.vehicle_active === 0 ? 'ทะเบียนไม่พบหรือถูกระงับ' : 'ยังตรวจสอบทะเบียนไม่ได้');
+          const ownerText = event.owner_name ? `เจ้าของ: ${escapeHtml(event.owner_name)}${event.owner_role ? ` (${escapeHtml(event.owner_role)})` : ''}` : 'ยังไม่พบเจ้าของรถที่เชื่อมโยง';
+          const evidence = typeof event.evidence_image_path === 'string' && /^(https?:\/\/|\/api\/)/i.test(event.evidence_image_path)
+            ? `<img src="${escapeHtml(event.evidence_image_path)}" alt="ภาพหลักฐานเหตุการณ์" loading="lazy" style="display:block; max-width:220px; max-height:120px; object-fit:contain; border-radius:8px; margin-top:8px;">`
+            : (event.evidence_image_path ? '<div style="font-size:10px;color:var(--text-gray);margin-top:5px;">มีหลักฐานภาพอ้างอิงจากต้นทาง (ไม่เปิด URL ที่ไม่ปลอดภัย)</div>' : '<div style="font-size:10px;color:#FCA5A5;margin-top:5px;">ไม่มีภาพหลักฐานแนบ</div>');
+          const eventKind = event.event_type === 'OCR_FAILED' ? 'OCR อ่านทะเบียนไม่สำเร็จ' : 'AI ตรวจพบท่ีต้องทบทวน';
+          return `<article style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; padding:12px; border:1px solid rgba(167,139,250,.22); background:rgba(255,255,255,.025); border-radius:12px;">
+            <div style="min-width:220px; flex:1;">
+              <div style="font-size:15px; font-weight:700; color:#fff;">${escapeHtml(plate)} <span style="font-size:10px; color:#FDE68A;">PENDING • ต้องให้ รปภ. ตรวจ</span></div>
+              <div style="font-size:10px; color:#FDE68A; margin-top:3px;">${eventKind}</div>
+              <div style="font-size:11px; color:#CBD5E1; margin-top:4px;">${escapeHtml(event.camera_name || event.camera_code || 'กล้องไม่ระบุ')} • ${confidence} • ${escapeHtml(vehicleState)}</div>
+              <div style="font-size:10px; color:#CBD5E1; margin-top:3px;">${ownerText}</div>
+              <div style="font-size:10px; color:var(--text-gray); margin-top:3px;">${floorText} • ${escapeHtml(event.created_at || '')}</div>
+              ${evidence}
+              <div style="font-size:10px; color:#FCA5A5; margin-top:3px;">การยืนยันรายการนี้ไม่ส่งคำสั่งเปิดไม้กั้น</div>
+            </div>
+            <div style="display:flex; gap:7px;">
+              <button class="btn-secondary" style="padding:6px 10px;" onclick="reviewAiEvent(${Number(event.id)}, 'CONFIRM')">ยืนยันผลตรวจ</button>
+              <button class="btn-secondary" style="padding:6px 10px; color:#FCA5A5; border-color:rgba(248,113,113,.4);" onclick="reviewAiEvent(${Number(event.id)}, 'REJECT')">ปฏิเสธ</button>
+            </div>
+          </article>`;
+        }).join('');
+      } catch (error) {
+        if (state) state.textContent = 'OFFLINE / ERROR • ข้อมูลคิวไม่พร้อม';
+        if (list) list.innerHTML = '<div style="color:#FCA5A5; padding:12px;">เชื่อมต่อคิวตรวจสอบไม่ได้ ข้อมูลเดิมอาจไม่เป็นปัจจุบัน</div>';
+      }
+    }
+
+    async function reviewAiEvent(eventId, action) {
+      const actionLabel = action === 'CONFIRM' ? 'ยืนยันผลที่ตรวจสอบแล้ว' : 'ปฏิเสธผล AI';
+      if (!confirm(`${actionLabel} รายการ #${eventId}? การยืนยันนี้ไม่เปิดไม้กั้น`)) return;
+      const correctedPlate = action === 'CONFIRM' ? prompt('ทะเบียนที่เจ้าหน้าที่ตรวจสอบแล้ว (จำเป็นสำหรับ OCR ที่อ่านไม่สำเร็จ):', '') : null;
+      if (action === 'CONFIRM' && correctedPlate === null) return;
+      const reviewNotes = prompt('บันทึกหมายเหตุการตรวจสอบ (เว้นว่างได้):', '') || null;
+      try {
+        const res = await apiFetch(`/api/ai/verify/${eventId}`, {
+          method: 'POST',
+          body: JSON.stringify({ action, corrected_plate: correctedPlate || null, review_notes: reviewNotes })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'บันทึกผลตรวจไม่สำเร็จ');
+        await loadAiReviewQueue();
+        alert(`${data.status}: บันทึกผลตรวจแล้ว ไม่มีการส่งคำสั่งไม้กั้น`);
+      } catch (error) {
+        alert(error.message || 'บันทึกผลตรวจไม่สำเร็จ');
+      }
+    }
+
+    function updateGateStateChips(commandStatus, acknowledgementStatus, physicalFeedback, vehiclePassage) {
+      const entries = [
+        ['gate-command-state', commandStatus || 'ยังไม่มีคำสั่ง'],
+        ['gate-ack-state', acknowledgementStatus || 'ไม่ทราบ'],
+        ['gate-physical-state', physicalFeedback || 'ไม่ทราบ'],
+        ['gate-passage-state', vehiclePassage || 'ยังไม่ยืนยัน']
+      ];
+      entries.forEach(([id, value]) => { const node = document.getElementById(id); if (node) node.textContent = value; });
+    }
+
+    async function triggerGateControl(gateId, action) {
+      const consequence = action === 'EMERGENCY'
+        ? 'คำสั่งฉุกเฉินจะส่ง OPEN ไปยังตัวควบคุม'
+        : `ส่งคำสั่ง ${action} ไปยังตัวควบคุม`;
+      const reason = ['OPEN', 'UNLOCK', 'EMERGENCY'].includes(action)
+        ? prompt('ระบุเหตุผลและการอนุมัติก่อนสั่งเปิดไม้กั้น (ระบบจะบันทึกชื่อผู้ใช้ที่ล็อกอิน):', '')
+        : (prompt(`ระบุเหตุผลในการสั่ง ${action}:`, '') || `Manual ${action}`);
+      if (reason === null || (['OPEN', 'UNLOCK', 'EMERGENCY'].includes(action) && !reason.trim())) return;
+      if (!confirm(`${consequence}? ${reason ? `เหตุผล: ${reason}. ` : ''}ระบบจะยังไม่ยืนยันตำแหน่งจริงของไม้กั้นหรือการผ่านของรถ`)) return;
+      const statusEl = document.getElementById('gate-last-action');
+      statusEl.innerHTML = `<span style="color:#F59E0B;">กำลังส่งคำสั่ง ${action}...</span>`;
+      try {
+        const res = await apiFetch('/api/gate/control', {
+          method: 'POST',
+          body: JSON.stringify({ gate_id: gateId, action: action, reason: reason })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          statusEl.innerHTML = `<span style="color:#EF4444;">${data.detail || 'สั่งการไม่สำเร็จ'}</span>`;
+          return;
+        }
+        updateGateStateChips(data.command_status, data.acknowledgement_status, data.physical_feedback, data.vehicle_passage);
+        statusEl.innerHTML = `<span style="color:#FDE68A;">${escapeHtml(data.message || 'ส่งคำสั่งแล้ว')}</span>`;
+        syncLiveParkingData();
+      } catch (e) {
+        updateGateStateChips('FAILED', 'UNKNOWN', 'UNKNOWN', 'UNCONFIRMED');
+        statusEl.innerHTML = `<span style="color:#EF4444;">ไม่สามารถติดต่อเซิร์ฟเวอร์ได้</span>`;
+      }
+    }
+
+    async function handlePlateSearch(e) {
+      if (e.key !== 'Enter') return;
+      const query = document.getElementById('sec-search-plate-input').value.trim();
+      const box = document.getElementById('sec-search-result-box');
+      if (!query) return;
+
+      box.innerHTML = 'กำลังค้นหาจากฐานข้อมูลจริง...';
+      try {
+        const res = await apiFetch(`/api/parking/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (!res.ok) {
+          box.innerHTML = `<span style="color:#EF4444;">${data.detail || 'ไม่มีสิทธิ์ค้นหา'}</span>`;
+          return;
+        }
+        const items = data.results || [];
+        if (items.length === 0) {
+          box.innerHTML = `<span style="color:#F87171;">ไม่พบข้อมูลรถหรือรหัส "${query}" ในระบบ</span>`;
+          return;
+        }
+        box.innerHTML = items.map(v => `
+          <div style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex; justify-content:space-between;">
+              <strong style="color:#fff;">${v.plate_display} (${dispVal(v.province)})</strong>
+              <span style="color:${v.session_status === 'ACTIVE' ? '#4ADE80' : '#94A3B8'}; font-weight:700;">
+                ${v.session_status === 'ACTIVE' ? `จอดอยู่ ชั้น ${v.current_floor} (${v.slot_number || 'ตรวจพบบนชั้น'})` : 'ไม่ได้จอดในอาคารขณะนี้'}
+              </span>
+            </div>
+            <div style="color:var(--text-gray); margin-top:2px;">
+              ผู้ถือครอง: ${dispVal(v.owner_name)} (${dispVal(v.owner_role)}) • เบอร์ติดต่อ: ${dispVal(v.owner_phone)}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        box.innerHTML = `<span style="color:#EF4444;">เกิดข้อผิดพลาดในการค้นหา</span>`;
+      }
+    }
+
+    function refreshCctvStreams() {
+      const ts = Date.now();
+      ['gate', 'fl1_head', 'fl1_tail', 'fl2_head', 'fl2_tail'].forEach(cam => {
+        const id = 'stream-cam-' + cam.replace('_', '-');
+        const el = document.getElementById(id);
+        if (el) el.src = `/api/cam/frame/${cam}?t=${ts}`;
+      });
+    }
+
+    async function openSecuritySlotsModal() {
+      await loadAdminSlots(1);
+      if (allSlotsCache.length > 0) {
+        openEditSlotModal(allSlotsCache[0].id);
+      }
+    }
+
+    // =========================================================================
+    // 9. ADMIN MODULES (Users, Slots, Google Sheets, Login/Audit Logs)
+    // =========================================================================
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('#view-admin > .dash-card > div > .admin-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active-panel'));
+
+      document.getElementById(`tab-btn-${tabName}`)?.classList.add('active');
+      document.getElementById(`admin-panel-${tabName}`)?.classList.add('active-panel');
+
+      if (tabName === 'users') loadAdminUsers();
+      if (tabName === 'slots') loadAdminSlots();
+      if (tabName === 'sheets') loadSheetsStatus();
+      if (tabName === 'audit') loadAdminAudit();
+    }
+
+    let allUsersCache = [];
+    let currentUserRoleFilter = '';
+
+    async function loadAdminUsers() {
+      const res = await apiFetch('/api/admin/users');
+      if (!res.ok) return;
+      const data = await res.json();
+      allUsersCache = data.users || [];
+      applyUserFilters();
+    }
+
+    function filterUserList(role, btnEl) {
+      currentUserRoleFilter = role;
+      if (btnEl && btnEl.parentElement) {
+        btnEl.parentElement.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+      }
+      applyUserFilters();
+    }
+
+    function handleUserSearch() {
+      applyUserFilters();
+    }
+
+    function applyUserFilters() {
+      const q = (document.getElementById('admin-user-search-input')?.value || '').trim().toLowerCase();
+      const filtered = allUsersCache.filter(u => {
+        if (currentUserRoleFilter && u.role_code !== currentUserRoleFilter) return false;
+        if (!q) return true;
+        return u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.phone || '').includes(q);
+      });
+      renderUsersTable(filtered);
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById('admin-users-table-body');
+      if (!tbody) return;
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-gray);">ไม่พบข้อมูลผู้ใช้งาน</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><strong style="color:#FFC0D9;">${u.username}</strong></td>
+          <td>${u.name}</td>
+          <td><span style="color:#FF8ABC; font-weight:700;">${u.role_code}</span></td>
+          <td style="font-size:11px;">${dispVal(u.gender)} / ${u.age !== null && u.age !== undefined ? u.age + ' ปี' : 'ยังไม่ได้ระบุ'} / ${dispVal(u.birthdate)}</td>
+          <td>${dispVal(u.phone)}</td>
+          <td style="font-size:11px; color:#94A3B8;">${dispVal(u.last_login_at)}</td>
+          <td>
+            <span style="color:${u.is_active ? '#4ADE80' : '#EF4444'}; font-weight:600;">
+              ${u.is_active ? 'ปกติ' : 'ระงับบัญชี'}
+            </span>
+          </td>
+          <td style="display:flex; gap:4px; flex-wrap:wrap;">
+            <button class="role-pill-btn" style="padding:2px 7px; font-size:10px;" onclick="openEditUserModal(${u.id})">แก้ไข/Role/รหัส</button>
+            <button class="role-pill-btn" style="padding:2px 7px; font-size:10px; background:rgba(239,68,68,0.18);" onclick="toggleUserActive(${u.id}, ${u.is_active})">
+              ${u.is_active ? 'ระงับ' : 'เปิดใช้'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openCreateUserModal() {
+      document.getElementById('edit-user-id').value = '';
+      document.getElementById('edit-user-username').value = '';
+      document.getElementById('edit-user-username').disabled = false;
+      document.getElementById('edit-user-name').value = '';
+      document.getElementById('edit-user-role').value = 'STUDENT';
+      document.getElementById('edit-user-gender').value = '';
+      document.getElementById('edit-user-age').value = '';
+      document.getElementById('edit-user-birthdate').value = '';
+      document.getElementById('edit-user-phone').value = '';
+      document.getElementById('edit-user-password').value = '';
+      document.getElementById('user-modal-title').textContent = 'เพิ่มผู้ใช้งานใหม่';
+      document.getElementById('user-edit-modal').style.display = 'flex';
+    }
+
+    function openEditUserModal(userId) {
+      const u = allUsersCache.find(x => x.id === userId);
+      if (!u) return;
+      document.getElementById('edit-user-id').value = u.id;
+      document.getElementById('edit-user-username').value = u.username;
+      document.getElementById('edit-user-username').disabled = true;
+      document.getElementById('edit-user-name').value = u.name;
+      document.getElementById('edit-user-role').value = u.role_code;
+      document.getElementById('edit-user-gender').value = u.gender || '';
+      document.getElementById('edit-user-age').value = u.age !== null && u.age !== undefined ? u.age : '';
+      document.getElementById('edit-user-birthdate').value = u.birthdate || '';
+      document.getElementById('edit-user-phone').value = u.phone || '';
+      document.getElementById('edit-user-password').value = '';
+      document.getElementById('user-modal-title').textContent = `แก้ไขผู้ใช้งาน: ${u.name} (${u.username})`;
+      document.getElementById('user-edit-modal').style.display = 'flex';
+    }
+
+    function closeUserEditModal() {
+      document.getElementById('user-edit-modal').style.display = 'none';
+    }
+
+    async function saveUserRecord() {
+      const id = document.getElementById('edit-user-id').value;
+      const ageVal = document.getElementById('edit-user-age').value.trim();
+      const payload = {
+        name: document.getElementById('edit-user-name').value.trim(),
+        role_code: document.getElementById('edit-user-role').value,
+        gender: document.getElementById('edit-user-gender').value || null,
+        age: ageVal !== '' ? parseInt(ageVal, 10) : null,
+        birthdate: document.getElementById('edit-user-birthdate').value.trim() || null,
+        phone: document.getElementById('edit-user-phone').value.trim() || null
+      };
+      const pwd = document.getElementById('edit-user-password').value;
+      if (pwd) payload.password = pwd;
+
+      let res;
+      if (!id) {
+        payload.username = document.getElementById('edit-user-username').value.trim();
+        if (!payload.username || !payload.name || !payload.password) {
+          alert('กรุณากรอก รหัสประจำตัว, ชื่อ-นามสกุล และรหัสผ่านให้ครบถ้วน');
+          return;
+        }
+        res = await apiFetch('/api/admin/users', { method: 'POST', body: JSON.stringify(payload) });
+      } else {
+        res = await apiFetch(`/api/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || 'ไม่สามารถบันทึกข้อมูลผู้ใช้งานได้');
+        return;
+      }
+      closeUserEditModal();
+      await loadAdminUsers();
+      alert(data.message);
+    }
+
+    async function toggleUserActive(userId, currentActive) {
+      if (!confirm(`ยืนยันการ${currentActive ? 'ระงับบัญชี' : 'เปิดใช้งานบัญชี'}นี้หรือไม่?`)) return;
+      const res = await apiFetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ is_active: currentActive ? 0 : 1 })
+      });
+      if (res.ok) await loadAdminUsers();
+    }
+
+    // --- SLOTS ---
+    let allSlotsCache = [];
+    async function loadAdminSlots(floor = null) {
+      const url = floor ? `/api/admin/slots?floor=${floor}` : '/api/admin/slots';
+      const res = await apiFetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      allSlotsCache = data.slots || [];
+      renderSlotsTable(allSlotsCache);
+    }
+
+    function filterSlotFloor(fl, btnEl) {
+      if (btnEl && btnEl.parentElement) {
+        btnEl.parentElement.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+      }
+      loadAdminSlots(fl);
+    }
+
+    function renderSlotsTable(slots) {
+      const tbody = document.getElementById('admin-slots-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = slots.map(s => `
+        <tr>
+          <td><strong style="color:#FFC0D9;">${s.slot_number}</strong></td>
+          <td>ชั้น ${s.floor_number} / โซน ${s.zone_code || 'A'}</td>
+          <td>${s.slot_type}</td>
+          <td><span class="badge-status-${s.status.toLowerCase()}" style="padding:2px 8px; border-radius:8px; font-weight:700; font-size:11px;">${s.status}</span></td>
+          <td>${s.plate_display || '-'}</td>
+          <td style="font-size:11px; color:#94A3B8;">${s.detection_source || '-'}</td>
+          <td style="display:flex; gap:4px;">
+            <button class="role-pill-btn" style="padding:2px 7px; font-size:10px;" onclick="openEditSlotModal(${s.id})">แก้ไข</button>
+            <button class="role-pill-btn" style="padding:2px 7px; font-size:10px; background:rgba(239,68,68,0.18);" onclick="deleteSlotRecord(${s.id}, '${s.slot_number}')">ลบ</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openCreateSlotModal() {
+      document.getElementById('edit-slot-id').value = '';
+      document.getElementById('edit-slot-floor').value = '1';
+      document.getElementById('edit-slot-zone').value = 'A';
+      document.getElementById('edit-slot-number').value = '';
+      document.getElementById('edit-slot-type').value = 'REGULAR';
+      document.getElementById('edit-slot-status').value = 'UNKNOWN';
+      document.getElementById('edit-slot-vehicle').value = '';
+      document.getElementById('edit-slot-reason').value = '';
+      document.getElementById('slot-modal-title').textContent = 'เพิ่มช่องจอดใหม่';
+      document.getElementById('slot-edit-modal').style.display = 'flex';
+    }
+
+    function openEditSlotModal(slotId) {
+      const s = allSlotsCache.find(x => x.id === slotId);
+      if (!s) return;
+      document.getElementById('edit-slot-id').value = s.id;
+      document.getElementById('edit-slot-floor').value = String(s.floor_number);
+      document.getElementById('edit-slot-zone').value = s.zone_code || 'A';
+      document.getElementById('edit-slot-number').value = s.slot_number;
+      document.getElementById('edit-slot-type').value = s.slot_type || 'REGULAR';
+      document.getElementById('edit-slot-status').value = s.status;
+      document.getElementById('edit-slot-vehicle').value = s.plate_display || '';
+      document.getElementById('edit-slot-reason').value = '';
+      document.getElementById('slot-modal-title').textContent = `แก้ไขช่องจอด ${s.slot_number}`;
+      document.getElementById('slot-edit-modal').style.display = 'flex';
+    }
+
+    function closeSlotEditModal() {
+      document.getElementById('slot-edit-modal').style.display = 'none';
+    }
+
+    async function saveSlotRecord() {
+      const id = document.getElementById('edit-slot-id').value;
+      const floor_number = parseInt(document.getElementById('edit-slot-floor').value, 10);
+      const zone_code = document.getElementById('edit-slot-zone').value.trim() || 'A';
+      const slot_number = document.getElementById('edit-slot-number').value.trim();
+      const slot_type = document.getElementById('edit-slot-type').value;
+      const status = document.getElementById('edit-slot-status').value;
+      const vehicle_plate = document.getElementById('edit-slot-vehicle').value.trim() || null;
+      const reason = document.getElementById('edit-slot-reason').value.trim() || null;
+
+      if (!slot_number) {
+        alert('กรุณาระบุรหัสช่องจอด');
+        return;
+      }
+
+      let res;
+      if (!id) {
+        res = await apiFetch('/api/admin/slots', {
+          method: 'POST',
+          body: JSON.stringify({ floor_number, zone_code, slot_number, slot_type, status })
+        });
+      } else {
+        res = await apiFetch(`/api/admin/slots/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ floor_number, zone_code, slot_number, slot_type, status, vehicle_plate, reason })
+        });
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || 'เกิดข้อผิดพลาดในการบันทึกช่องจอด');
+        return;
+      }
+      closeSlotEditModal();
+      await loadAdminSlots();
+      syncLiveParkingData();
+      alert(data.message);
+    }
+
+    async function deleteSlotRecord(slotId, slotCode) {
+      if (!confirm(`ยืนยันการลบช่องจอด ${slotCode} หรือไม่?`)) return;
+      const res = await apiFetch(`/api/admin/slots/${slotId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || 'ไม่สามารถลบช่องจอดได้');
+        return;
+      }
+      await loadAdminSlots();
+    }
+
+    // --- GOOGLE SHEETS & APPS SCRIPT ---
+    async function loadSheetsStatus() {
+      const res = await apiFetch('/api/sheets/status');
+      if (!res.ok) return;
+      const data = await res.json();
+      const sync = data.sync || {};
+
+      document.getElementById('sheets-webapp-url-input').value = sync.webapp_url || '';
+      const stEl = document.getElementById('sheets-sync-status');
+      stEl.textContent = sync.status || 'PENDING';
+      stEl.style.color = sync.status === 'SUCCESS' ? '#4ADE80' : (sync.status === 'FAILED' ? '#EF4444' : '#FBBF24');
+
+      document.getElementById('sheets-last-sync-time').textContent = sync.last_sync_time || 'ยังไม่ได้ซิงก์';
+      document.getElementById('sheets-sync-summary').textContent = sync.error_message || sync.last_sync_summary || '';
+
+      const c = sync.sheet_counts || {};
+      document.getElementById('count-sheet-Users').textContent = `${c['Users'] ?? 0} รายการ`;
+      document.getElementById('count-sheet-TeacherSchedule').textContent = `${c['Teacher Schedule'] ?? 0} รายการ`;
+      document.getElementById('count-sheet-StudentSchedule').textContent = `${c['Student Schedule'] ?? 0} รายการ`;
+      document.getElementById('count-sheet-ParkingHistory').textContent = `${c['Parking History'] ?? 0} รายการ`;
+      document.getElementById('count-sheet-LoginHistory').textContent = `${c['Login History'] ?? 0} รายการ`;
+      document.getElementById('count-sheet-PersonalInformation').textContent = `${c['Personal Information'] ?? 0} รายการ`;
+    }
+
+    async function saveSheetsWebAppUrl() {
+      const url = document.getElementById('sheets-webapp-url-input').value.trim();
+      const res = await apiFetch('/api/sheets/config', {
+        method: 'POST',
+        body: JSON.stringify({ webapp_url: url })
+      });
+      if (res.ok) {
+        await loadSheetsStatus();
+        alert('บันทึก Google Apps Script Web App URL เรียบร้อยแล้ว');
+      }
+    }
+
+    async function inspectRemoteGoogleSheet() {
+      const res = await apiFetch('/api/sheets/inspect', { method: 'POST' });
+      const data = await res.json();
+      const info = data.inspection || {};
+      if (!info.success) {
+        alert(info.message || info.error || 'ไม่สามารถตรวจสอบ Google Sheets ได้');
+        return;
+      }
+      const tabs = Object.keys(info.sheets || {});
+      alert(`เชื่อมต่อสำเร็จ!\nชื่อไฟล์: ${info.spreadsheet_name}\nแผ่นงานปัจจุบัน (${tabs.length}): ${tabs.join(', ') || 'ยังไม่มี'}\nแผ่นงานมาตรฐานที่จะสร้างเพิ่มเมื่อซิงก์: ${(info.missing_standard_sheets || []).join(', ') || 'ครบทั้ง 6 Sheets แล้ว'}`);
+    }
+
+    async function triggerSheetsSync() {
+      document.getElementById('sheets-sync-status').textContent = 'PENDING (กำลังซิงก์...)';
+      const res = await apiFetch('/api/sheets/sync', { method: 'POST' });
+      const data = await res.json();
+      await loadSheetsStatus();
+      const r = data.result || {};
+      if (r.success) {
+        alert(`ซิงก์สำเร็จครบทั้ง 6 Sheets!\n${r.summary}`);
+      } else {
+        alert(`สถานะ: ${r.status}\n${r.error || r.summary}`);
+      }
+    }
+
+    async function openAppsScriptCodeModal() {
+      const res = await apiFetch('/api/sheets/apps-script-code');
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('code-gs-textarea').value = data.code_gs || '';
+      document.getElementById('apps-script-modal').style.display = 'flex';
+    }
+
+    function copyAppsScriptCode() {
+      const area = document.getElementById('code-gs-textarea');
+      area.select();
+      navigator.clipboard.writeText(area.value);
+      alert('คัดลอกโค้ด Code.gs เรียบร้อยแล้ว! นำไปวางใน Extensions > Apps Script ของ Google Sheets ได้เลย');
+    }
+
+    // --- LOGIN & AUDIT LOGS ---
+    async function loadAdminAudit() {
+      const lRes = await apiFetch('/api/admin/login-logs');
+      if (lRes.ok) {
+        const lData = await lRes.json();
+        const logs = lData.logs || [];
+        document.getElementById('admin-login-logs-tbody').innerHTML = logs.map(l => `
+          <tr>
+            <td>#${l.id}</td>
+            <td><strong style="color:#FFC0D9;">${l.username}</strong></td>
+            <td>${dispVal(l.name)}</td>
+            <td>${dispVal(l.role)}</td>
+            <td>${l.login_at || '-'}</td>
+            <td>${l.logout_at || '<span style="color:#38BDF8;">กำลังใช้งาน</span>'}</td>
+            <td><span style="color:${l.status === 'SUCCESS' ? '#4ADE80' : '#EF4444'}; font-weight:700;">${l.status}</span></td>
+          </tr>
+        `).join('');
+      }
+
+      const aRes = await apiFetch('/api/admin/audit-logs');
+      if (aRes.ok) {
+        const aData = await aRes.json();
+        const aLogs = aData.logs || [];
+        document.getElementById('admin-audit-logs-tbody').innerHTML = aLogs.map(a => `
+          <tr>
+            <td>${a.created_at || '-'}</td>
+            <td><strong style="color:#FF8ABC;">${a.username}</strong></td>
+            <td>${a.action}</td>
+            <td>${a.resource_type || '-'} ${a.resource_id ? '#' + a.resource_id : ''}</td>
+            <td style="font-size:11px; color:#CBD5E1;">${a.new_value || a.details || '-'}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // =========================================================================
+    // 10. REAL-TIME LIVE DATABASE SYNC LOOP
+    // =========================================================================
+    async function syncLiveParkingData() {
+      if (!currentUser) return;
+      try {
+        // 1. Building Capacity Overview (Real DB slots)
+        const ovRes = await apiFetch('/api/parking/overview');
+        if (ovRes.ok) {
+          const ovData = await ovRes.json();
+          const floors = ovData.floors || [];
+          let totalFree = 0, totalOcc = 0, totalUnknown = 0, totalAll = 0, fl1Free = 0, fl1Occ = 0;
+
+          floors.forEach(f => {
+            totalFree += f.free_slots || 0;
+            totalOcc += f.occupied_slots || 0;
+            totalUnknown += f.unknown_slots || 0;
+            totalAll += f.total_slots || 0;
+            if (f.floor_number === 1) {
+              fl1Free = f.free_slots || 0;
+              fl1Occ = f.occupied_slots || 0;
+            }
+          });
+
+          const bFree = document.getElementById('student-building-free');
+          if (bFree) bFree.textContent = `ว่างยืนยัน ${totalFree} / ${totalAll} ช่อง • ไม่ทราบ ${totalUnknown} (ชั้น 1 ว่าง ${fl1Free})`;
+
+          const kFree = document.getElementById('kpi-total-free');
+          const kOcc = document.getElementById('kpi-total-occupied');
+          const kDesc = document.getElementById('kpi-capacity-desc');
+          if (kFree) kFree.textContent = totalFree;
+          if (kOcc) kOcc.textContent = totalOcc;
+          if (kDesc) {
+            const pct = totalAll > 0 ? ((totalOcc / totalAll) * 100).toFixed(1) : '0.0';
+            kDesc.textContent = `ความจุทั้งหมด ${totalAll} ช่อง • ไม่ทราบ ${totalUnknown} • อัตราครองพื้นที่ ${pct}%`;
+          }
+
+          const sFl1 = document.getElementById('sec-fl1-free');
+          if (sFl1) sFl1.textContent = fl1Free;
+          const sFl1Sub = document.getElementById('sec-fl1-free-sub');
+          const sFl1Occ = document.getElementById('sec-fl1-occ-sub');
+          if (sFl1Sub) sFl1Sub.textContent = fl1Free;
+          if (sFl1Occ) sFl1Occ.textContent = fl1Occ;
+
+          const upperEl = document.getElementById('sec-upper-floors-list');
+          if (upperEl) {
+            upperEl.innerHTML = floors.filter(f => f.floor_number >= 2).map(f => `
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>${f.floor_name}</span>
+                <span style="color:${f.free_slots > 0 ? '#4ADE80' : (f.unknown_slots ? '#FBBF24' : '#EF4444')}; font-weight:700;">ว่างยืนยัน ${f.free_slots} • ไม่ทราบ ${f.unknown_slots || 0} (จอด ${f.occupied_slots})</span>
+              </div>
+            `).join('');
+          }
+        }
+
+        // 2. Personal Vehicle & History (for Student / Teacher / Admin preview)
+        const myRes = await apiFetch('/api/parking/my');
+        if (myRes.ok) {
+          const myData = await myRes.json();
+          const info = myData.data || {};
+          const pv = info.primary_vehicle;
+          const ownVehicles = document.getElementById('student-own-vehicles');
+          if (ownVehicles) ownVehicles.innerHTML = (info.vehicles || []).map(v => `<span class="role-pill-btn" style="font-size:10px;">${escapeHtml(v.plate_display)}${v.is_approved ? '' : ' • รออนุมัติ'}</span>`).join('');
+
+          document.getElementById('student-plate-badge').textContent = pv ? pv.plate_display : 'ยังไม่ได้ลงทะเบียนรถ';
+          document.getElementById('student-plate-province').textContent = pv ? dispVal(pv.province) : '';
+          document.getElementById('student-vehicle-model').textContent = pv ? `${pv.brand || ''} ${pv.model || ''} ${pv.color ? '(' + pv.color + ')' : ''}`.trim() : '';
+
+          const pBadge = document.getElementById('student-parked-badge');
+          if (info.is_parked) {
+            pBadge.style.color = '#4ADE80';
+            pBadge.style.background = 'rgba(74, 222, 128, 0.15)';
+            pBadge.innerHTML = '<i class="fa-solid fa-circle-dot"></i> กำลังจอดอยู่ในอาคาร';
+            document.getElementById('student-current-floor').textContent =
+              `ชั้น ${info.current_floor || 1} (${info.slot_number ? 'ช่อง ' + info.slot_number : 'ตรวจพบบนชั้น'})`;
+            document.getElementById('student-entry-time').textContent = info.entry_time || '-';
+            if (info.entry_time) {
+              const diffMin = Math.max(0, Math.floor((Date.now() - new Date(info.entry_time.replace(' ', 'T')).getTime()) / 60000));
+              document.getElementById('student-parked-duration').textContent =
+                `${Math.floor(diffMin / 60)} ชั่วโมง ${diffMin % 60} นาที`;
+            }
+          } else {
+            pBadge.style.color = '#94A3B8';
+            pBadge.style.background = 'rgba(148, 163, 184, 0.15)';
+            pBadge.innerHTML = 'ไม่ได้จอดในอาคารขณะนี้';
+            document.getElementById('student-current-floor').textContent = 'อยู่นอกอาคาร';
+            document.getElementById('student-entry-time').textContent = '-';
+            document.getElementById('student-parked-duration').textContent = '-';
+          }
+
+          const hBody = document.getElementById('student-history-table-body');
+          const hist = info.history || [];
+          if (hBody) {
+            if (hist.length === 0) {
+              hBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-gray);">ยังไม่มีประวัติการเข้าจอด</td></tr>';
+            } else {
+              hBody.innerHTML = hist.slice(0, 10).map(h => `
+                <tr>
+                  <td><strong style="color:#FFC0D9;">${h.plate_display}</strong></td>
+                  <td>${h.entry_time || '-'}</td>
+                  <td>${h.exit_time || 'กำลังจอด'}</td>
+                  <td>ชั้น ${h.current_floor || '-'} ${h.slot_number ? '(' + h.slot_number + ')' : ''}</td>
+                  <td><span style="color:${h.session_status === 'ACTIVE' ? '#4ADE80' : '#94A3B8'};">${h.session_status}</span></td>
+                </tr>
+              `).join('');
+            }
+          }
+        }
+
+        // 3. Notifications Stream
+        const nRes = await apiFetch('/api/messages/notifications');
+        if (nRes.ok) {
+          const nData = await nRes.json();
+          const notifs = nData.notifications || [];
+          const streamEl = document.getElementById('student-alert-stream');
+          if (streamEl) {
+            if (notifs.length === 0) {
+              streamEl.innerHTML = `<div style="font-size:12px; color:var(--text-gray); padding:8px 0;">ยังไม่มีการแจ้งเตือนใหม่ กดปุ่ม "เปิดห้องแชท รปภ." เพื่อส่งข้อความ</div>`;
+            } else {
+              streamEl.innerHTML = notifs.slice(0, 8).map(n => {
+                const isAi = (n.category || '').includes('AI') || (n.title || '').includes('AI');
+                return `
+                  <div class="msg-bubble ${isAi ? 'msg-bubble-ai' : 'msg-bubble-sec'}" onclick="openChatCenterModal()" style="cursor:pointer;">
+                    <div style="font-size:17px; color:${isAi ? '#FF4D9B' : '#38BDF8'};">
+                      <i class="fa-solid ${isAi ? 'fa-robot' : 'fa-user-shield'}"></i>
+                    </div>
+                    <div style="flex:1;">
+                      <div style="display:flex; justify-content:space-between;">
+                        <strong style="font-size:12px; color:${isAi ? '#FFC0D9' : '#7DD3FC'};">${n.title}</strong>
+                        <span style="font-size:10px; color:var(--text-gray);">${n.created_at || ''}</span>
+                      </div>
+                      <div style="font-size:11px; color:#E2E8F0; margin-top:2px;">${n.message}</div>
+                    </div>
+                  </div>
+                `;
+              }).join('');
+            }
+          }
+        }
+
+        // 4. Security Gate Logs (only for SECURITY & ADMIN)
+        if (['SECURITY', 'ADMIN'].includes(currentUser.role_code)) {
+          const gRes = await apiFetch('/api/gate/logs');
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            const logs = gData.logs || [];
+            const gBody = document.getElementById('sec-history-table-body');
+            if (gBody) {
+              gBody.innerHTML = logs.slice(0, 8).map(l => `
+                <tr>
+                  <td>${l.created_at || '-'}</td>
+                  <td><strong style="color:#FFC0D9;">${l.plate_text || l.gate_name || '-'}</strong></td>
+                  <td>${l.user_name || l.triggered_by || '-'}</td>
+                  <td><span style="color:${l.action === 'DENIED' ? '#EF4444' : '#4ADE80'};">${l.action} (${l.result_status})</span></td>
+                </tr>
+              `).join('');
+            }
+          }
+        }
+
+        // 5. ESP32 Hardware Status & No-Parking Alert Telemetry (All Roles)
+        try {
+          const hwRes = await apiFetch('/api/hardware/status');
+          if (hwRes.ok) {
+            const hw = await hwRes.json();
+            updateGateStateChips('ไม่มีคำสั่งใหม่', hw.gate?.acknowledgement_status || 'UNKNOWN_UNCORRELATED', hw.gate?.physical_feedback || 'UNKNOWN', hw.gate?.vehicle_passage || 'UNCONFIRMED');
+            const badge = document.getElementById('esp-mqtt-badge');
+            if (badge && hw.esp32) {
+              badge.innerHTML = hw.esp32.online
+                ? `<span style="color:#4ADE80;">● ESP32 Online</span> • CiRA MQTT`
+                : `<span style="color:#FFC0D9;">MQTT Ready</span> • รอสัญญาณ ESP32`;
+            }
+
+            const alertBanner = document.getElementById('global-no-park-alert');
+            const alertDesc = document.getElementById('global-no-park-desc');
+            const npPill = document.getElementById('fl1-no-park-pill');
+            const secBanner = document.getElementById('esp-no-park-banner');
+
+            const np = hw.esp32 ? hw.esp32.no_parking_alert : null;
+            const noParkFresh = Boolean(hw.esp32?.online && np?.updated_at && (Date.now() - new Date(np.updated_at).getTime()) <= 15000);
+            if (noParkFresh && np.active) {
+              if (alertBanner) alertBanner.style.display = 'block';
+              if (secBanner) {
+                secBanner.style.display = 'block';
+                secBanner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> แจ้งเตือน ESP32 (HC-SR04 #3): ${np.message} ${np.distance_cm ? '(ระยะ ' + np.distance_cm + ' ซม.)' : ''}`;
+              }
+              if (alertDesc) alertDesc.textContent = `เซนเซอร์วัดระยะทางจริง HC-SR04 #3 ตรวจพบสิ่งกีดขวาง/รถจอดในช่องห้ามจอด ชั้น 1 ${np.distance_cm ? 'ระยะห่าง ' + np.distance_cm + ' ซม.' : ''}`;
+              if (npPill) {
+                npPill.style.background = 'rgba(239, 68, 68, 0.3)';
+                npPill.style.color = '#EF4444';
+                npPill.style.border = '1px solid #EF4444';
+                npPill.innerHTML = `🚨 มีรถจอดขวาง! (${np.distance_cm ? np.distance_cm + ' ซม.' : 'ตรวจพบ'})`;
+              }
+            } else {
+              if (alertBanner) alertBanner.style.display = 'none';
+              if (secBanner) secBanner.style.display = 'none';
+              if (npPill) {
+                if (noParkFresh) {
+                  npPill.style.background = 'rgba(74, 222, 128, 0.15)';
+                  npPill.style.color = '#4ADE80';
+                  npPill.style.border = 'none';
+                  npPill.innerHTML = '🟢 ตรวจล่าสุด: ไม่พบสิ่งกีดขวาง';
+                } else {
+                  npPill.style.background = 'rgba(251, 191, 36, 0.15)';
+                  npPill.style.color = '#FDE68A';
+                  npPill.style.border = '1px solid rgba(251,191,36,.45)';
+                  npPill.innerHTML = '🟡 ไม่ทราบ • เซนเซอร์ออฟไลน์/ข้อมูลเก่า';
+                }
+              }
+            }
+
+            if (hw.cameras && ['SECURITY', 'ADMIN'].includes(currentUser.role_code)) {
+              Object.entries(hw.cameras).forEach(([cid, cinfo]) => {
+                if (cinfo && cinfo.online) {
+                  const imgEl = document.getElementById('stream-cam-' + cid.replace('_', '-'));
+                  if (imgEl) imgEl.src = `/api/cam/frame/${cid}?t=${Date.now()}`;
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      } catch (e) {}
+    }
+
+    bootAuthenticatedSession();
+    setInterval(syncLiveParkingData, 4000);
+  </script>
+</body>
+</html>
